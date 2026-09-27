@@ -1,0 +1,7 @@
+# Cloudflare Workers 정적 배포 — Sense Lab 과 같은 방식 (잠금 없음, 자산만 서빙)
+# 배포: npx wrangler deploy
+name = "ml-lab"
+compatibility_date = "2026-08-01"
+
+[assets]
+directory = "."

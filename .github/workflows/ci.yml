@@ -1,0 +1,52 @@
+name: CI
+
+# 손으로 맞춰야 하는 것이 어긋났는지 본다.
+#  · 브라우저 JS 문법
+#  · 문장 활동 모델: 역전파가 수치 미분과 같은가, 예시 글을 배우는가
+#  · css/themaker-ui.css 가 공용 디자인 킷(themakerrobot/themaker-ui) 복사본과 같은가
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+
+  syntax:
+    name: 문법
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 브라우저 JS
+        run: for f in lib/*.js acts/*/*.js; do node --check "$f"; done
+
+  models:
+    name: 모델 검사
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/*.test.mjs
+
+  design-kit:
+    name: 디자인 킷 복사본이 원본과 같은가
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: css/themaker-ui.css
+        run: |
+          # 태그로 고정한다 — 킷이 바뀌어도 이쪽 CI 가 갑자기 깨지지 않는다.
+          KIT=v1.0.0
+          curl -sSfL -o /tmp/kit.css \
+            "https://raw.githubusercontent.com/themakerrobot/themaker-ui/$KIT/themaker-ui.css"
+          if ! diff -u /tmp/kit.css css/themaker-ui.css; then
+            echo "::error::css/themaker-ui.css 가 디자인 킷 $KIT 과 다릅니다."
+            echo "고칠 것이 있으면 themakerrobot/themaker-ui 를 고치고 여기로 다시 복사하세요."
+            exit 1
+          fi
+          echo "디자인 킷 $KIT 과 같습니다"

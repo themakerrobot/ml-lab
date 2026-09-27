@@ -1,0 +1,159 @@
+/* ═══════════════════════════════════════════════════════════════════
+   ML Lab 전용 스타일
+   ═══════════════════════════════════════════════════════════════════
+   공통 규격(색·버튼·패널·카드·표·막대·토스트·헤더)은 css/themaker-ui.css 에 있다.
+   그 파일은 themakerrobot/themaker-ui 의 복사본이므로 여기서 고치지 말 것.
+   이 파일에는 ML Lab 에만 있는 것만 둔다. 새 색은 만들지 않고 토큰만 쓴다.
+   ─────────────────────────────────────────────────────────────────── */
+
+/* 헤더 아이콘 버튼 — Sense Lab 과 같은 둥근 모양 */
+.hbtn{width:34px;height:34px;border-radius:999px}
+
+/* ── 공통 작은 도구 ── */
+.row.wrap{flex-wrap:wrap}
+.db.wide{width:100%;justify-content:center;padding:11px}
+.db.grow{flex:1;justify-content:center}
+#steps{overflow-x:auto}
+#steps .stpline{flex-shrink:1}
+
+/* 고르는 카드 잠금 (학습 중) */
+.mradio{gap:8px}
+.mradio.lock{opacity:.5;pointer-events:none}
+.mradio i{color:var(--acc);width:16px;text-align:center}
+
+/* 슬라이더 줄 (Sense Lab 시험실과 같은 모양) */
+.thr{margin-top:13px}
+.thr .lb{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+
+/* 학습 곡선 */
+#chart{width:100%;height:96px;display:block;margin-top:10px;border:1px solid var(--line-soft);
+  border-radius:8px;background:var(--panel2)}
+.chart-legend{display:flex;gap:12px;margin-top:4px;font-size:10.5px;color:var(--ink3);font-weight:600}
+.chart-legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.chart-legend .lg-acc{background:var(--acc)}
+
+/* ── 홈 ── */
+.home{flex:1;min-height:0;overflow-y:auto;padding:18px 16px 24px}
+.home-in{max-width:1080px;margin:0 auto}
+.hero{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.hero img{width:84px;height:auto;flex-shrink:0}
+.hero h2{font-family:var(--serif);font-size:22px;color:var(--ink);margin-bottom:4px}
+.hero p{font-size:13px;color:var(--ink2);line-height:1.6}
+#actGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.act{text-decoration:none;color:inherit;transition:border-color .12s}
+.act:hover{border-color:var(--acc)}
+.act .pb{display:flex;flex-direction:column;gap:8px}
+.act .ic{width:40px;height:40px;border-radius:10px;background:var(--acc-soft);color:var(--acc-ink);
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.act .top{display:flex;align-items:center;gap:10px}
+.act .tt{font-size:15px;font-weight:800;color:var(--ink)}
+.act .sub{font-size:11.5px;color:var(--ink3);font-weight:600}
+.act .ds{font-size:12.5px;color:var(--ink2);line-height:1.6}
+.act .ft{display:flex;align-items:center;gap:6px;margin-top:auto;padding-top:4px}
+.act.soon{opacity:.7}
+.home-note{margin-top:16px}
+
+/* 준비 중 화면 */
+.soon-box{text-align:center;padding:30px 12px}
+.soon-box img{width:110px;display:block;margin:0 auto 12px}
+.soon-box .tt{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}
+.soon-box .ds{font-size:12.5px;color:var(--ink2);line-height:1.7}
+
+/* ── 문장: 글 넣기 ── */
+#presetRow{margin-bottom:8px}
+#presetRow .db{padding:5px 10px}
+#corpus{width:100%;resize:vertical;min-height:120px;line-height:1.6;font-size:12.5px;flex:none;display:block}
+
+/* ── 문장: 이어 쓰기 ── */
+#seed{font-size:14px}
+#panC .answer{margin-top:12px;justify-content:flex-start;text-align:left;font-size:17px;font-weight:700;
+  line-height:1.7;min-height:80px;padding:14px 16px}
+#panC .answer.idk{justify-content:center;font-size:13px}
+.answer .seedtxt{color:var(--acc-ink);background:var(--acc-soft);border-radius:4px;padding:0 2px}
+.made{text-decoration:underline wavy var(--warn);text-underline-offset:5px;text-decoration-thickness:1.5px}
+.legend-made{font-size:11.5px;color:var(--ink3);margin-top:6px}
+.legend-made .made{color:var(--ink2);font-weight:700}
+#probs .bar .ch{font-size:14px;font-weight:800;min-width:20px}
+
+/* ── 문장: 들여다보기 ── */
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{min-width:28px;height:30px;padding:0 6px;border-radius:6px;border:1px solid var(--line-soft);
+  display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--ink3)}
+.chip.on{border-color:var(--acc);background:var(--acc-soft);color:var(--acc-ink)}
+.chip.q{border-style:dashed;color:var(--ink3)}
+
+#look .seg{flex-wrap:wrap;margin-bottom:8px}
+#look .seg button{padding:4px 9px;font-size:11.5px}
+.att-wrap{overflow-x:auto}
+table.att{border-collapse:collapse;font-size:11px;margin:0 auto}
+table.att th{font-weight:600;color:var(--ink3);width:18px;height:18px;text-align:center;padding:0}
+table.att td{width:18px;height:18px;padding:0;border:1px solid var(--panel);background:var(--panel2)}
+/* 진하기 = 어텐션 가중치. 칸 안의 남색 조각의 불투명도로 그린다 (color-mix 없이) */
+table.att td i{display:block;width:100%;height:100%;background:var(--acc)}
+table.att td.off{background:var(--panel)}
+table.att tr.last th{color:var(--acc-ink);font-weight:800}
+
+/* ── 문장: 맞히기 대결 ── */
+.duel-q{font-size:16px;font-weight:700;color:var(--ink);padding:10px 12px;border-radius:8px;
+  background:var(--panel2);line-height:1.6;overflow-wrap:anywhere}
+.duel-q .blank{display:inline-block;min-width:22px;text-align:center;margin-left:2px;
+  border-bottom:2px solid var(--acc);color:var(--ink3)}
+.duel-q .blank.ok{color:var(--ok);border-bottom-color:var(--ok)}
+.duel-score{display:flex;gap:18px;margin-top:10px;font-size:13px;color:var(--ink2);font-weight:600}
+.duel-score b{font-size:17px;color:var(--acc-ink);margin-left:4px}
+#duelIn{max-width:110px;text-align:center;font-size:15px}
+
+/* ── 튜토리얼 (Sense Lab 과 같은 말풍선) ── */
+.tour{position:fixed;inset:0;z-index:300}
+.tour-spot{position:fixed;border-radius:10px;pointer-events:none;border:2px solid var(--acc);
+  box-shadow:0 0 0 9999px rgba(42,38,32,.45);transition:all .25s ease}
+.tour-bubble{position:fixed;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;box-shadow:0 8px 24px rgba(42,38,32,.25);padding:13px 14px 11px;
+  display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start;transition:all .25s ease}
+.tour-char{width:52px;height:auto;flex-shrink:0}
+.tour-text{flex:1;min-width:0;font-size:13.5px;font-weight:600;color:var(--ink);
+  line-height:1.65;white-space:pre-line;padding-top:2px}
+.tour-foot{width:100%;display:flex;align-items:center;gap:6px;margin-top:2px}
+.tour-dots{flex:1;display:flex;gap:4px;align-items:center}
+.tour-dots .dot{width:6px;height:6px;border-radius:50%;background:var(--line-soft)}
+.tour-dots .dot.on{background:var(--acc)}
+.tour-skip{font-size:11.5px;padding:5px 9px}
+.tour-next{font-size:12.5px;padding:5px 14px}
+
+/* ── 반응형 ── */
+@media (max-width:1100px){
+  .home{overflow:visible}
+}
+@media (max-width:700px){
+  header{margin:6px 6px 0;padding:0 8px;gap:4px}
+  header h1{font-size:15px;padding-right:6px;letter-spacing:0}
+  header h1 img{height:24px}
+  .navlink{padding:6px 8px 4px;font-size:13.5px}
+  #engine{display:none}
+  #langToggle{font-size:13px !important;padding:6px 8px !important;min-width:38px !important}
+  .hbtn{width:30px;height:30px;font-size:12px}
+  #steps{padding:10px 8px;overflow:visible;justify-content:space-between}
+  #steps .stpline{min-width:4px;margin:0 4px}
+  .stp{font-size:12px;gap:4px}
+  .stp .cir{width:20px;height:20px;font-size:11px}
+  .hero img{width:64px}
+  .hero h2{font-size:19px}
+  #actGrid{grid-template-columns:1fr}
+  #corpus{font-size:15px}
+  #seed{font-size:16px}
+  .thr .lb{font-size:13px}
+  .chart-legend{font-size:12px}
+  .legend-made{font-size:13px}
+  #duelIn{font-size:16px}
+}
+@media (max-width:420px){
+  header{margin:4px 4px 0;padding:0 6px;gap:2px}
+  header h1 img{height:22px}
+  header h1{font-size:13.5px;padding-right:3px;gap:5px}
+  .navlink{padding:6px 4px 4px;font-size:13px}
+  #langToggle{min-width:34px !important;padding:6px 6px !important}
+  .hbtn{width:28px;height:28px}
+}
+@media (max-width:365px){
+  header h1 .brand-txt{display:none}
+}

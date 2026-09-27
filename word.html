@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ML Lab — 문장</title>
+<meta name="description" content="글을 가르치면 AI가 다음 글자를 맞히며 글을 이어 써요.">
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FBF7EF">
+<link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
+<link rel="stylesheet" href="css/all.min.css?v=1">
+<link rel="stylesheet" href="css/themaker-ui.css?v=1">
+<link rel="stylesheet" href="css/app.css?v=1">
+</head>
+<body>
+
+<header data-tab="word.html"></header>
+
+<div id="steps">
+  <div class="stp on" id="s1"><span class="cir">1</span>글 넣기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s2"><span class="cir">2</span>배우기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s3"><span class="cir">3</span>이어 쓰기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s4"><span class="cir">4</span>들여다보기</div>
+</div>
+
+<div class="mk-main" id="mlMain">
+
+  <!-- 왼쪽: 글 · AI 고르기 · 배우기 -->
+  <div class="pan pan-side" id="panL">
+    <div class="ph"><i class="fa-solid fa-book-open"></i>가르칠 글</div>
+    <div class="pb">
+      <div class="pb-label">예시 글</div>
+      <div class="row wrap" id="presetRow"></div>
+      <textarea class="inp" id="corpus" rows="7" spellcheck="false" placeholder="여기에 글을 써요. 줄마다 한 문장씩!"></textarea>
+      <div class="hint" id="corpusInfo"></div>
+
+      <div class="sec2" id="modelPick">
+        <div class="st">AI 고르기</div>
+        <div class="mradio on" data-kind="mlp">
+          <i class="fa-solid fa-brain"></i>
+          <span class="nm">작은 신경망</span>
+          <span class="mt">앞 몇 글자만 봐요</span>
+        </div>
+        <div class="mradio" data-kind="gpt">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span class="nm">Transformer</span>
+          <span class="mt">앞 글을 다 봐요</span>
+        </div>
+        <div class="thr" id="ctxRow">
+          <div class="lb"><span>앞을 몇 글자 볼까요?</span><span class="num" id="ctxVal">8</span></div>
+          <input type="range" id="ctx" min="1" max="8" step="1" value="8">
+        </div>
+      </div>
+
+      <div class="sec2">
+        <button class="db go wide" id="trainBtn"><i class="fa-solid fa-graduation-cap"></i> 배우기 시작</button>
+        <div class="row" style="margin-top:6px">
+          <button class="db grow" id="moreBtn" disabled><i class="fa-solid fa-rotate-right"></i> 더 배우기</button>
+          <button class="db grow" id="stopBtn" disabled><i class="fa-solid fa-stop"></i> 멈추기</button>
+        </div>
+        <div class="prg" style="margin-top:10px">
+          <div class="lb"><span id="prgLabel">아직 안 배웠어요</span><span class="num" id="prgPct"></span></div>
+          <div class="track"><div class="fill" id="prgFill"></div></div>
+        </div>
+        <canvas id="chart"></canvas>
+        <div class="chart-legend"><span><i class="lg-acc"></i>틀린 정도 (낮을수록 잘 맞혀요)</span></div>
+        <div class="hint" id="trainInfo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 가운데: 이어 쓰기 -->
+  <div class="pan pan-wide" id="panC">
+    <div class="ph"><i class="fa-solid fa-pen"></i>이어 쓰기</div>
+    <div class="pb">
+      <div class="pb-label">시작 글자</div>
+      <div class="row">
+        <input class="inp" id="seed" type="text" maxlength="40" placeholder="예: 강아지는 ">
+        <button class="db" id="stepBtn" disabled title="한 글자만 이어 쓰기"><i class="fa-solid fa-forward-step"></i> 한 글자</button>
+        <button class="db go" id="genBtn" disabled><i class="fa-solid fa-play"></i> 이어 쓰기</button>
+      </div>
+
+      <div class="thr">
+        <div class="lb"><span>온도 — 높을수록 엉뚱해요</span><span class="num" id="tempVal">0.8</span></div>
+        <input type="range" id="temp" min="0.1" max="2" step="0.1" value="0.8">
+      </div>
+
+      <div class="answer idk" id="out">배운 뒤에 이어 쓸 수 있어요</div>
+      <div class="legend-made" id="madeNote" style="display:none">
+        <span class="made">밑줄</span> = 가르친 글에 없는 문장이에요. AI가 지어냈어요.
+      </div>
+
+      <div class="sec2">
+        <div class="st">다음 글자 후보</div>
+        <div id="probs"><div class="hint" style="margin-top:0">배운 뒤에 보여요</div></div>
+        <div class="hint" id="unkNote" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 들여다보기 · 맞히기 대결 -->
+  <div class="pan pan-out" id="lookPan">
+    <div class="ph"><i class="fa-solid fa-eye"></i>들여다보기</div>
+    <div class="pb">
+      <div id="look"><div class="hint" style="margin-top:0">배운 뒤에 AI가 어느 글자를 보는지 나와요</div></div>
+
+      <div class="sec2" id="duelSec">
+        <div class="st">맞히기 대결 — 나 vs AI</div>
+        <div class="duel-q" id="duelQ">문제를 내 볼까요?</div>
+        <div class="row" style="margin-top:8px">
+          <input class="inp" id="duelIn" type="text" maxlength="2" placeholder="다음 글자" disabled>
+          <button class="db go" id="duelGo" disabled>내기</button>
+          <button class="db" id="duelNew" disabled><i class="fa-solid fa-shuffle"></i> 새 문제</button>
+        </div>
+        <div class="hint" id="duelMsg"></div>
+        <div class="duel-score">
+          <span><i class="fa-solid fa-user"></i> 나 <b class="num" id="scoreMe">0</b></span>
+          <span><i class="fa-solid fa-robot"></i> AI <b class="num" id="scoreAi">0</b></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="lib/nav.js?v=1"></script>
+<script src="lib/i18n.js?v=1"></script>
+<script src="lib/tour.js?v=1"></script>
+<script type="module" src="acts/word/page.js?v=1"></script>
+</body>
+</html>

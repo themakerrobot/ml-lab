@@ -1,0 +1,7 @@
+.git
+.github
+tests
+node_modules
+package.json
+*.md
+wrangler.toml

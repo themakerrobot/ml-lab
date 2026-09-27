@@ -1,0 +1,8 @@
+# 정적 자산 응답 헤더 (Cloudflare Workers/Pages 공용 형식)
+# .js/.css 를 브라우저로 직접 열어도 한글이 깨지지 않게 charset 을 명시한다.
+/*.js
+  Content-Type: text/javascript; charset=utf-8
+/*.mjs
+  Content-Type: text/javascript; charset=utf-8
+/*.css
+  Content-Type: text/css; charset=utf-8
