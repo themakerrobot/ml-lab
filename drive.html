@@ -4,36 +4,123 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ML Lab — 운전</title>
-<meta name="description" content="내가 키보드로 운전하면 AI가 보고 따라 배워요.">
+<meta name="description" content="내가 운전하면 AI가 보고 따라 배워요.">
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#FBF7EF">
 <link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
 <link rel="stylesheet" href="css/all.min.css?v=1">
 <link rel="stylesheet" href="css/themaker-ui.css?v=1">
-<link rel="stylesheet" href="css/app.css?v=1">
+<link rel="stylesheet" href="css/app.css?v=2">
 </head>
 <body>
 
 <header data-tab="drive.html"></header>
 
-<div class="mk-main">
-  <div class="pan pan-wide">
-    <div class="ph"><i class="fa-solid fa-car"></i>운전 — 따라 배우기</div>
+<div id="steps">
+  <div class="stp on" id="s1"><span class="cir">1</span>운전하기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s2"><span class="cir">2</span>배우기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s3"><span class="cir">3</span>AI 운전</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s4"><span class="cir">4</span>새 트랙</div>
+</div>
+
+<div class="mk-main" id="mlMain">
+
+  <!-- 왼쪽: 트랙 · 운전사 · 모은 운전 -->
+  <div class="pan pan-side" id="panL">
+    <div class="ph"><i class="fa-solid fa-road"></i>운전 교실</div>
     <div class="pb">
-      <div class="soon-box">
-        <img src="assets/img/pibo-idea.png" alt="">
-        <div class="tt">준비 중이에요</div>
-        <div class="ds">내가 키보드로 운전하면 AI가 보고 따라 배워요.<br>직진만 가르치면 커브에서 어떻게 될까요? 데이터가 곧 실력이라는 걸 알아봐요.</div>
-        <div style="margin-top:14px"><a class="db" href="word.html"><i class="fa-solid fa-comment-dots"></i> 문장 활동 해 보기</a></div>
+      <div class="pb-label">트랙</div>
+      <div id="trackPick"></div>
+
+      <div class="sec2">
+        <div class="st">누가 운전할까요?</div>
+        <div class="seg" id="whoSeg">
+          <button type="button" data-who="me" class="on"><i class="fa-solid fa-user"></i> 나</button>
+          <button type="button" data-who="ai"><i class="fa-solid fa-robot"></i> AI</button>
+        </div>
+        <div class="hint" id="whoHint">내가 운전하는 동안 AI가 보고 배워요.</div>
+      </div>
+
+      <div class="sec2" id="dataSec">
+        <div class="st">AI에게 보여 준 운전</div>
+        <div id="counts"></div>
+        <div class="row" style="margin-top:8px;align-items:center">
+          <span class="hint" style="margin:0;flex:1" id="totalCnt"></span>
+          <button class="db danger" id="clearBtn"><i class="fa-solid fa-trash"></i> 지우기</button>
+        </div>
+        <div class="hint">곧게만 달리면 AI는 도는 법을 못 배워요.</div>
       </div>
     </div>
   </div>
+
+  <!-- 가운데: 트랙 -->
+  <div class="pan pan-wide" id="panC">
+    <div class="ph"><i class="fa-solid fa-car"></i><span id="panTitle">트랙</span></div>
+    <div class="pb">
+      <div class="row" style="margin-bottom:10px">
+        <button class="db go" id="goBtn"><i class="fa-solid fa-play"></i> 출발</button>
+        <button class="db" id="stopBtn" disabled><i class="fa-solid fa-stop"></i> 멈춤</button>
+        <button class="db" id="fastBtn" title="AI 운전을 3배 빠르게"><i class="fa-solid fa-forward"></i> 빠르게</button>
+        <span style="flex:1"></span>
+        <span class="badge" id="lapBadge">0바퀴</span>
+      </div>
+      <div id="trackBox">
+        <canvas id="cv"></canvas>
+        <div id="overlay"></div>
+      </div>
+      <div class="padrow">
+        <button class="db pad" id="padL" type="button"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="hint" id="keyHint">← → 키로 운전해요. 아무것도 안 누르면 곧게 가요.</div>
+        <button class="db pad" id="padR" type="button"><i class="fa-solid fa-arrow-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 배우기 · AI가 보는 숫자 · 기록 -->
+  <div class="pan pan-out" id="panR">
+    <div class="ph"><i class="fa-solid fa-chart-simple"></i>배우기 &amp; AI</div>
+    <div class="pb">
+      <button class="db go wide" id="trainBtn" disabled><i class="fa-solid fa-graduation-cap"></i> 배우기 시작</button>
+      <div class="hint" id="trainHint" style="margin-top:6px">운전을 조금 보여 준 뒤에 눌러요.</div>
+      <div class="prg" style="margin-top:10px">
+        <div class="lb"><span id="prgLabel">아직 안 배웠어요</span><span class="num" id="prgPct"></span></div>
+        <div class="track"><div class="fill" id="prgFill"></div></div>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="chart-legend">
+        <span><i class="lg-acc"></i>맞힌 비율</span>
+        <span><i class="lg-warn"></i>틀린 정도</span>
+      </div>
+
+      <div class="sec2">
+        <div class="st">AI가 보는 숫자 — 센서 7개</div>
+        <div id="sensors"></div>
+        <div class="hint">AI는 트랙 그림이 아니라 이 숫자만 봐요. 1에 가까울수록 길이 멀리 열려 있어요.</div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">AI라면 이렇게 해요</div>
+        <div id="choice"><div class="hint" style="margin-top:0">배운 뒤에 보여요</div></div>
+      </div>
+
+      <div class="sec2">
+        <div class="st">AI 운전 기록</div>
+        <div id="runLog"><div class="hint" style="margin-top:0">아직 없어요</div></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div id="toast"></div>
 
 <script src="lib/nav.js?v=1"></script>
-<script src="lib/i18n.js?v=1"></script>
+<script src="lib/i18n.js?v=2"></script>
+<script src="lib/tour.js?v=2"></script>
+<script type="module" src="acts/drive/page.js?v=1"></script>
 </body>
 </html>
