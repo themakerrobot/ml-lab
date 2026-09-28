@@ -181,6 +181,61 @@ table.exam td.low{color:var(--warn);font-weight:700}
 #belt{display:block;width:100%;height:auto;margin-top:8px;border:1px solid var(--line-soft);border-radius:8px}
 #beltSec .seg button{padding:5px 10px}
 
+/* ── 공통: 체크 줄 ── */
+.chk{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--ink2);font-weight:600;cursor:pointer;margin-top:6px;line-height:1.5}
+.chk input{accent-color:var(--acc);width:15px;height:15px;margin-top:1px;flex-shrink:0}
+table.exam .sub{font-size:10px;color:var(--ink3);font-weight:600;margin-top:2px}
+
+/* ── 청소 ── */
+#roomBox{display:flex;justify-content:center}
+#roomCv{display:block;border:1.5px solid var(--line);border-radius:6px;touch-action:none}
+#roomPick .mradio .mt,#botPick .mradio .mt{color:var(--ink3)}
+
+/* ── 공정 ── */
+.sumrow{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--ink2);margin-bottom:5px}
+.sumrow span:first-child{width:62px;flex-shrink:0}
+.sumrow .bt{flex:1;height:8px;border-radius:4px;background:var(--line-soft);overflow:hidden}
+.sumrow .bf{height:100%;background:var(--acc)}
+.sumrow .num{width:64px;text-align:right;flex-shrink:0}
+.tblwrap{overflow-x:auto;margin-top:8px}
+table.exam td.ok{color:var(--ok);font-weight:700}
+.feats{display:flex;flex-wrap:wrap;gap:6px}
+.feat{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+  font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer;background:var(--panel)}
+.feat input{accent-color:var(--acc)}
+.feat.warnish i{color:var(--warn)}
+.treewrap{overflow-x:auto;padding-bottom:4px}
+.tree{display:flex;flex-direction:column;align-items:center;min-width:max-content;padding:4px}
+.tnode{border:1.5px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;
+  color:var(--ink);background:var(--panel);text-align:center;white-space:nowrap}
+.tnode.q.flag{border-color:var(--warn);color:var(--warn)}
+.tnode.leaf{display:flex;flex-direction:column;gap:2px}
+.tnode.leaf span{font-size:10.5px;font-weight:600;color:var(--ink3)}
+.tnode.leaf.pass{border-color:var(--ok);background:var(--ok-soft)}
+.tnode.leaf.pass b{color:var(--ok)}
+.tnode.leaf.fail b{color:var(--ink3)}
+.tkids{display:flex;gap:10px;margin-top:6px;align-items:flex-start}
+.tkid{display:flex;flex-direction:column;align-items:center;border-top:1.5px solid var(--line-soft);padding-top:4px}
+.tedge{font-size:10.5px;font-weight:700;color:var(--ink3);margin-bottom:4px}
+.warnt{color:var(--warn)}
+.gap{margin-top:6px;font-size:13px;font-weight:800}
+.gap.bad{color:var(--warn)}
+.gap.good{color:var(--ok)}
+.wi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 12px}
+.wi-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+.wi{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12.5px;font-weight:600}
+.wi b{margin-left:4px}
+.wi.pass{border-color:var(--ok);background:var(--ok-soft)}
+.wi.pass b{color:var(--ok)}
+.wi.fail b{color:var(--warn)}
+
+/* ── 진화 ── */
+#stageBox{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+#stage{display:block;width:100%}
+.stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#testSeg button,#terrainSeg button{padding:5px 10px}
+#rewardPick .hint{margin-top:6px}
+
 /* ── 튜토리얼 (Sense Lab 과 같은 말풍선) ── */
 .tour{position:fixed;inset:0;z-index:300}
 .tour-spot{position:fixed;border-radius:10px;pointer-events:none;border:2px solid var(--acc);
@@ -202,7 +257,11 @@ table.exam td.low{color:var(--warn);font-weight:700}
 @media (max-width:1100px){
   .home{overflow:visible}
 }
+@media (max-width:1180px){
+  #engine{display:none}
+}
 @media (max-width:700px){
+  .navlink.m-hide{display:none}
   header{margin:6px 6px 0;padding:0 8px;gap:4px}
   header h1{font-size:15px;padding-right:6px;letter-spacing:0}
   header h1 img{height:24px}
@@ -228,6 +287,9 @@ table.exam td.low{color:var(--warn);font-weight:700}
   .eye-ai{width:100%}
   .eye-src{max-width:none}
   .augs{font-size:14px}
+  .chk{font-size:14px}
+  .wi-grid{grid-template-columns:1fr}
+  .feat{font-size:14px}
   .fcell .note{font-size:12px}
   .sensor{font-size:12.5px}
   #overlay{font-size:15px}

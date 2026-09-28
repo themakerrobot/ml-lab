@@ -11,29 +11,102 @@
 <link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
 <link rel="stylesheet" href="css/all.min.css?v=1">
 <link rel="stylesheet" href="css/themaker-ui.css?v=1">
-<link rel="stylesheet" href="css/app.css?v=4">
+<link rel="stylesheet" href="css/app.css?v=5">
 </head>
 <body>
 
 <header data-tab="cleaner.html"></header>
 
-<div class="mk-main">
-  <div class="pan pan-wide">
-    <div class="ph"><i class="fa-solid fa-broom"></i>청소 — 규칙 vs 학습</div>
+<div id="steps">
+  <div class="stp on" id="s1"><span class="cir">1</span>규칙 청소기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s2"><span class="cir">2</span>배우는 청소기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s3"><span class="cir">3</span>센서 · 새 방</div>
+</div>
+
+<div class="mk-main" id="mlMain">
+
+  <!-- 왼쪽: 방 · 청소기 -->
+  <div class="pan pan-side" id="panL">
+    <div class="ph"><i class="fa-solid fa-house"></i>방 &amp; 청소기</div>
     <div class="pb">
-      <div class="soon-box">
-        <img src="assets/img/pibo-idea.png" alt="">
-        <div class="tt">준비 중이에요</div>
-        <div class="ds">규칙대로 도는 청소기와 스스로 배운 청소기를 겨뤄요.<br>방을 그리고, 두 청소기가 얼마나 깨끗이 치우는지 비교해요.</div>
-        <div style="margin-top:14px"><a class="db" href="word.html"><i class="fa-solid fa-comment-dots"></i> 문장 활동 해 보기</a></div>
+      <div class="pb-label">방</div>
+      <div id="roomPick"></div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="editRoom"> 가구 그리기 (칸을 눌러 놓고 빼요)</label>
+
+      <div class="sec2">
+        <div class="st">청소기</div>
+        <div id="botPick"></div>
+        <div class="hint" id="botHint"></div>
       </div>
     </div>
   </div>
+
+  <!-- 가운데: 방 그림 · 시합 -->
+  <div class="pan pan-wide" id="panC">
+    <div class="ph"><i class="fa-solid fa-broom"></i><span id="panTitle">방</span></div>
+    <div class="pb">
+      <div class="row" style="margin-bottom:10px;align-items:center;flex-wrap:wrap">
+        <button class="db go" id="raceBtn"><i class="fa-solid fa-flag-checkered"></i> 시합 (150걸음)</button>
+        <button class="db" id="stopBtn" disabled><i class="fa-solid fa-stop"></i> 멈춤</button>
+        <button class="db" id="fastBtn"><i class="fa-solid fa-forward"></i> 빠르게</button>
+        <span style="flex:1"></span>
+        <span class="badge num" id="stepBadge">0걸음</span>
+        <span class="badge num" id="covBadge">0%</span>
+        <span class="badge num" id="bumpBadge">부딪힘 0</span>
+      </div>
+      <div id="roomBox"><canvas id="roomCv"></canvas></div>
+      <div class="hint">먼지가 있는 칸은 진하고, 치운 칸은 밝아요. 한 판은 150걸음이에요.</div>
+
+      <div class="sec2" id="thinkSec" style="display:none">
+        <div class="st">배우는 청소기의 생각 — 지금 할 일마다 매긴 점수</div>
+        <div id="think"></div>
+        <div class="hint" id="senseLine"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 배우기 · 기록 -->
+  <div class="pan pan-out" id="panR">
+    <div class="ph"><i class="fa-solid fa-graduation-cap"></i>배우는 청소기</div>
+    <div class="pb">
+      <div class="pb-label">상과 벌점 — 무엇을 잘하면 상을 줄까요?</div>
+      <div class="thr"><div class="lb"><span>먼지를 치우면</span><span class="num" id="rCleanVal">+1</span></div>
+        <input type="range" id="rClean" min="0" max="2" step="0.1" value="1"></div>
+      <div class="thr"><div class="lb"><span>한 걸음 움직이면</span><span class="num" id="rStepVal">-0.05</span></div>
+        <input type="range" id="rStep" min="-0.2" max="0.2" step="0.05" value="-0.05"></div>
+      <div class="thr"><div class="lb"><span>벽에 부딪히면</span><span class="num" id="rBumpVal">-0.5</span></div>
+        <input type="range" id="rBump" min="-2" max="0" step="0.1" value="-0.5"></div>
+
+      <div class="sec2">
+        <div class="st">센서</div>
+        <label class="chk"><input type="checkbox" id="compass" checked> 먼지 나침반 (가장 가까운 먼지 쪽을 알려 줘요)</label>
+        <label class="chk"><input type="checkbox" id="manyRooms"> 여러 방에서 연습하기</label>
+      </div>
+
+      <button class="db go wide" id="trainBtn" style="margin-top:10px"><i class="fa-solid fa-dumbbell"></i> 연습하기 (600판)</button>
+      <div class="prg" style="margin-top:10px">
+        <div class="lb"><span id="prgLabel">아직 연습 안 했어요</span><span class="num" id="prgPct"></span></div>
+        <div class="track"><div class="fill" id="prgFill"></div></div>
+      </div>
+      <canvas id="chart"></canvas>
+      <div class="chart-legend"><span><i class="lg-acc"></i>판마다 치운 비율</span></div>
+
+      <div class="sec2">
+        <div class="st">시합 기록</div>
+        <div id="log"><div class="hint" style="margin-top:0">시합할 때마다 한 줄씩 쌓여요</div></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div id="toast"></div>
 
-<script src="lib/nav.js?v=4"></script>
-<script src="lib/i18n.js?v=4"></script>
+<script src="lib/nav.js?v=5"></script>
+<script src="lib/i18n.js?v=5"></script>
+<script src="lib/tour.js?v=5"></script>
+<script type="module" src="acts/cleaner/page.js?v=1"></script>
 </body>
 </html>

@@ -4,36 +4,105 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ML Lab — 공정</title>
-<meta name="description" content="한쪽 데이터만 많으면 AI의 판단이 어떻게 바뀔까요?">
+<meta name="description" content="지난 기록으로 배운 AI는 공정할까요? 나무 그림으로 AI가 고른 까닭을 봐요.">
 <link rel="icon" type="image/png" href="assets/img/favicon.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#FBF7EF">
 <link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
 <link rel="stylesheet" href="css/all.min.css?v=1">
 <link rel="stylesheet" href="css/themaker-ui.css?v=1">
-<link rel="stylesheet" href="css/app.css?v=4">
+<link rel="stylesheet" href="css/app.css?v=5">
 </head>
 <body>
 
 <header data-tab="fair.html"></header>
 
-<div class="mk-main">
-  <div class="pan pan-wide">
-    <div class="ph"><i class="fa-solid fa-scale-balanced"></i>공정 — 데이터와 편향</div>
+<div id="steps">
+  <div class="stp on" id="s1"><span class="cir">1</span>AI 만들기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s2"><span class="cir">2</span>공정한가?</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s3"><span class="cir">3</span>고치기</div>
+</div>
+
+<div class="mk-main" id="mlMain">
+
+  <!-- 왼쪽: 지난 기록 -->
+  <div class="pan pan-side" id="panL">
+    <div class="ph"><i class="fa-solid fa-folder-open"></i>지난 선발 기록</div>
     <div class="pb">
-      <div class="soon-box">
-        <img src="assets/img/pibo-idea.png" alt="">
-        <div class="tt">준비 중이에요</div>
-        <div class="ds">한쪽 데이터만 많으면 AI의 판단이 어떻게 바뀔까요?<br>AI가 무엇을 보고 골랐는지 나무 그림으로 봐요.</div>
-        <div style="margin-top:14px"><a class="db" href="word.html"><i class="fa-solid fa-comment-dots"></i> 문장 활동 해 보기</a></div>
+      <div class="hint" style="margin-top:0">코딩 동아리가 지난 몇 년의 선발 기록으로 AI를 만들려고 해요. 실력은 연습 시간 · 만든 작품 · 출석률로 정해져요.</div>
+
+      <div class="sec2" id="dataSec">
+        <div class="thr"><div class="lb"><span>2반 기록 수</span><span class="num" id="n2Val">60명</span></div>
+          <input type="range" id="n2" min="20" max="160" step="10" value="60"></div>
+        <div class="thr"><div class="lb"><span>지난 심사가 2반에 불리했던 정도</span><span class="num" id="biasVal">많이</span></div>
+          <input type="range" id="bias" min="0" max="3" step="1" value="2"></div>
+        <label class="chk"><input type="checkbox" id="fixLabel"> 기록 고치기 — 실력만 보고 다시 심사한 결과로 바꿔요</label>
+      </div>
+
+      <div class="sec2">
+        <div class="st">기록 한눈에</div>
+        <div id="dataSummary"></div>
+        <div class="tblwrap"><table class="mk-table exam" id="dataTable"></table></div>
+        <div class="hint">1반 120명의 기록은 그대로예요. 버스는 멀리 사는 친구들이 타요.</div>
       </div>
     </div>
   </div>
+
+  <!-- 가운데: AI 만들기 · 나무 -->
+  <div class="pan pan-wide" id="panC">
+    <div class="ph"><i class="fa-solid fa-sitemap"></i>선발 AI (결정 나무)</div>
+    <div class="pb">
+      <div class="pb-label">AI가 볼 수 있는 정보</div>
+      <div class="feats" id="feats"></div>
+      <div class="row" style="align-items:center;margin-top:8px;flex-wrap:wrap">
+        <div class="thr" style="margin:0;flex:1;min-width:180px"><div class="lb"><span>질문 몇 단계까지?</span><span class="num" id="depthVal">3</span></div>
+          <input type="range" id="depth" min="1" max="4" step="1" value="3"></div>
+        <button class="db go" id="trainBtn"><i class="fa-solid fa-graduation-cap"></i> AI 만들기</button>
+      </div>
+
+      <div class="sec2">
+        <div class="st">AI가 묻는 질문 — 위에서부터 따라가요</div>
+        <div id="tree"><div class="hint" style="margin-top:0">AI를 만들면 나무 그림이 나와요</div></div>
+      </div>
+
+      <div class="sec2" id="whatIf">
+        <div class="st">지원자 한 명 넣어 보기 — 반만 바꾸면 어떻게 될까요?</div>
+        <div class="wi-grid">
+          <div class="thr"><div class="lb"><span>연습 시간</span><span class="num" id="wPracticeVal">6시간</span></div>
+            <input type="range" id="wPractice" min="0" max="10" step="1" value="6"></div>
+          <div class="thr"><div class="lb"><span>만든 작품</span><span class="num" id="wWorksVal">3개</span></div>
+            <input type="range" id="wWorks" min="0" max="5" step="1" value="3"></div>
+          <div class="thr"><div class="lb"><span>출석률</span><span class="num" id="wAttendVal">85%</span></div>
+            <input type="range" id="wAttend" min="55" max="100" step="5" value="85"></div>
+        </div>
+        <div class="wi-row" id="wiRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: 올해 결과 · 비교표 -->
+  <div class="pan pan-out" id="panR">
+    <div class="ph"><i class="fa-solid fa-scale-balanced"></i>올해 지원자 200명</div>
+    <div class="pb">
+      <div class="hint" style="margin-top:0">올해 지원자는 1반·2반이 100명씩이고, 두 반의 실력은 똑같이 섞여 있어요.</div>
+      <div id="result"><div class="hint">AI를 만들면 결과가 나와요</div></div>
+
+      <div class="sec2">
+        <div class="st">비교표</div>
+        <div id="log"><div class="hint" style="margin-top:0">AI를 만들 때마다 한 줄씩 쌓여요</div></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div id="toast"></div>
 
-<script src="lib/nav.js?v=4"></script>
-<script src="lib/i18n.js?v=4"></script>
+<script src="lib/nav.js?v=5"></script>
+<script src="lib/i18n.js?v=5"></script>
+<script src="lib/tour.js?v=5"></script>
+<script type="module" src="acts/fair/page.js?v=1"></script>
 </body>
 </html>
