@@ -170,6 +170,17 @@ table.exam th,table.exam td{padding:5px 4px;text-align:center}
 table.exam td.nm{text-align:left;font-size:11px}
 table.exam td.low{color:var(--warn);font-weight:700}
 
+/* ── 색 로봇 ── */
+#srcPick{display:flex;flex-wrap:wrap;gap:5px}
+#srcPick .db{padding:5px 9px;font-size:12px}
+.clsrow .swatch{width:16px;height:16px;border-radius:4px;border:1px solid var(--line);background:var(--panel2);flex-shrink:0}
+#viewSeg{margin-bottom:8px}
+#photoBox{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel2)}
+#photo{display:block;width:100%;height:auto;touch-action:none;cursor:crosshair}
+#wheel{display:block;width:220px;max-width:100%;margin:4px auto 0}
+#belt{display:block;width:100%;height:auto;margin-top:8px;border:1px solid var(--line-soft);border-radius:8px}
+#beltSec .seg button{padding:5px 10px}
+
 /* ── 튜토리얼 (Sense Lab 과 같은 말풍선) ── */
 .tour{position:fixed;inset:0;z-index:300}
 .tour-spot{position:fixed;border-radius:10px;pointer-events:none;border:2px solid var(--acc);

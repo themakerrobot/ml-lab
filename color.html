@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ML Lab — 색 로봇</title>
+<meta name="description" content="색을 칠해서 가르치면 AI가 픽셀마다 색을 골라요. 투명 망토와 색 고르기 로봇.">
+<link rel="icon" type="image/png" href="assets/img/favicon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#FBF7EF">
+<link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
+<link rel="stylesheet" href="css/all.min.css?v=1">
+<link rel="stylesheet" href="css/themaker-ui.css?v=1">
+<link rel="stylesheet" href="css/app.css?v=4">
+</head>
+<body>
+
+<header data-tab="color.html"></header>
+
+<div id="steps">
+  <div class="stp on" id="s1"><span class="cir">1</span>칠해서 가르치기</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s2"><span class="cir">2</span>색 지도</div>
+  <div class="stpline"></div>
+  <div class="stp" id="s3"><span class="cir">3</span>로봇 미션</div>
+</div>
+
+<div class="mk-main" id="mlMain">
+
+  <!-- 왼쪽: 무엇을 할까 · 종류 · 붓 -->
+  <div class="pan pan-side" id="panL">
+    <div class="ph"><i class="fa-solid fa-palette"></i>색 가르치기</div>
+    <div class="pb">
+      <div class="pb-label">무엇을 해 볼까요?</div>
+      <div class="seg" id="modeSeg">
+        <button type="button" data-mode="cloak" class="on"><i class="fa-solid fa-wand-magic-sparkles"></i> 투명 망토</button>
+        <button type="button" data-mode="robot"><i class="fa-solid fa-robot"></i> 색 고르기 로봇</button>
+      </div>
+
+      <div class="sec2">
+        <div class="st">사진</div>
+        <div id="srcPick"></div>
+        <div class="row" id="camRow" style="margin-top:6px;display:none">
+          <button class="db grow" id="freezeBtn"><i class="fa-solid fa-camera"></i> 멈추고 칠하기</button>
+          <button class="db grow" id="bgBtn"><i class="fa-solid fa-image"></i> 배경 찍기</button>
+        </div>
+      </div>
+
+      <div class="sec2" id="clsSec">
+        <div class="st">무엇을 칠할까요?</div>
+        <div id="clsList"></div>
+        <div class="thr"><div class="lb"><span>붓 크기</span><span class="num" id="brushVal">6</span></div>
+          <input type="range" id="brush" min="2" max="14" step="1" value="6"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="db grow" id="undoBtn"><i class="fa-solid fa-rotate-left"></i> 되돌리기</button>
+          <button class="db danger grow" id="clearBtn"><i class="fa-solid fa-trash"></i> 모두 지우기</button>
+        </div>
+        <div class="hint" id="clsHint">종류를 고르고 사진 위를 칠해요. 칠한 픽셀의 색이 AI의 예시가 돼요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 가운데: 사진 · 결과 · 컨베이어 -->
+  <div class="pan pan-wide" id="panC">
+    <div class="ph"><i class="fa-solid fa-paintbrush"></i><span id="panTitle">사진</span>
+      <span style="flex:1"></span><span class="badge" id="busy" style="display:none">AI가 배우는 중…</span></div>
+    <div class="pb">
+      <div class="seg" id="viewSeg"></div>
+      <div id="photoBox">
+        <canvas id="photo" width="320" height="240"></canvas>
+        <video id="camVid" playsinline muted style="display:none"></video>
+      </div>
+      <div class="hint" id="viewHint"></div>
+      <div class="privnote">사진과 영상은 이 컴퓨터 밖으로 나가지 않아요</div>
+
+      <div class="sec2" id="beltSec" style="display:none">
+        <div class="st">컨베이어</div>
+        <div class="row" style="align-items:center;flex-wrap:wrap">
+          <div class="seg" id="beltLight"></div>
+          <button class="db go" id="beltGo"><i class="fa-solid fa-play"></i> 벨트 돌리기</button>
+          <span style="flex:1"></span>
+          <span class="badge" id="beltScore">0 / 0</span>
+        </div>
+        <canvas id="belt" width="480" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- 오른쪽: AI 고르기 · 색 지도 · 로봇 시험 -->
+  <div class="pan pan-out" id="panR">
+    <div class="ph"><i class="fa-solid fa-circle-half-stroke"></i>AI &amp; 색 지도</div>
+    <div class="pb">
+      <div class="pb-label">AI 고르기</div>
+      <div class="seg" id="modelSeg">
+        <button type="button" data-model="knn" class="on">가까운 이웃</button>
+        <button type="button" data-model="mlp">작은 신경망</button>
+      </div>
+      <div class="thr" id="kRow"><div class="lb"><span>이웃 몇 개에게 물어볼까요? (k)</span><span class="num" id="kVal">1</span></div>
+        <input type="range" id="k" min="1" max="15" step="2" value="1"></div>
+      <div class="hint" id="modelHint">가장 비슷한 색 k개를 찾아 많은 쪽으로 골라요.</div>
+
+      <div class="sec2" id="mapSec">
+        <div class="st">색 지도 — AI가 색을 나눈 경계</div>
+        <canvas id="wheel" width="220" height="220"></canvas>
+        <div class="thr"><div class="lb"><span>밝기</span><span class="num" id="vVal">80%</span></div>
+          <input type="range" id="v" min="10" max="100" step="5" value="80"></div>
+        <div class="hint">동그라미 한 바퀴가 색깔, 가운데로 갈수록 흐린 색이에요. 점은 내가 칠한 예시예요.<br>
+          땅 색깔이 AI가 고르는 종류예요. 경계가 어디에 그어졌는지 봐요.</div>
+      </div>
+
+      <div class="sec2" id="testSec" style="display:none">
+        <div class="st">로봇 시험 — 조명마다 블록 32개</div>
+        <button class="db wide" id="testBtn"><i class="fa-solid fa-industry"></i> 시험 보기</button>
+        <div id="testTable" style="margin-top:8px"><div class="hint" style="margin-top:0">시험할 때마다 한 줄씩 쌓여요</div></div>
+        <div class="hint" id="testNote"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="lib/nav.js?v=4"></script>
+<script src="lib/i18n.js?v=4"></script>
+<script src="lib/tour.js?v=4"></script>
+<script type="module" src="acts/color/page.js?v=1"></script>
+</body>
+</html>
