@@ -132,6 +132,44 @@ table.att tr.last th{color:var(--acc-ink);font-weight:800}
 #trackPick .mradio .mt{color:var(--acc-ink)}
 #runLog .saved i{flex-shrink:0}
 
+/* ── AI 눈 ── */
+.thumbs{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px;max-height:110px;overflow-y:auto;padding-right:2px}
+.thumbs img{width:30px;height:30px;border-radius:3px;display:block;cursor:pointer;image-rendering:pixelated;
+  outline:2px solid transparent;transition:transform .1s,outline-color .1s}
+.thumbs img:hover{transform:scale(2.2);outline-color:var(--warn);position:relative;z-index:5}
+#wrongWrap .thumbs img{cursor:default}
+#wrongWrap .thumbs img:hover{outline-color:var(--acc)}
+.eye-in{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.eye-src{flex:1;min-width:220px;max-width:340px}
+.eye-ai{flex-shrink:0;width:150px}
+#pad{display:block;width:100%;aspect-ratio:1;border:1.5px solid var(--line);border-radius:10px;
+  background:#fff;touch-action:none;cursor:crosshair}
+#padClear{margin-top:6px}
+#camBox{position:relative;width:100%;aspect-ratio:4/3;background:#0C1114;border-radius:10px;overflow:hidden}
+#camVid{width:100%;height:100%;object-fit:cover;display:block}
+#camOff{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;color:#56646C;font-size:12px;font-weight:600}
+/* 가운데 네모 = AI에게 들어가는 부분 (grab() 의 0.7 과 같게: 세로의 70% 정사각형) */
+.cam-frame{position:absolute;left:50%;top:50%;height:70%;aspect-ratio:1;transform:translate(-50%,-50%);
+  border:2px dashed var(--panel);border-radius:6px;pointer-events:none}
+.privnote{text-align:center;font-size:11px;color:var(--ink3);margin-top:8px;font-weight:600}
+#seeCv{width:128px;height:128px;image-rendering:pixelated;border:1.5px solid var(--line);border-radius:6px;display:block}
+.selinfo{margin-top:12px;padding:8px 10px;border-radius:8px;background:var(--panel2);
+  font-size:12px;color:var(--ink2);font-weight:600;text-align:center}
+.selinfo.on{background:var(--acc-soft);color:var(--acc-ink)}
+#capBtn{width:100%;margin-top:9px;justify-content:center;padding:11px}
+.augs{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;font-weight:600;color:var(--ink2)}
+.augs label{display:flex;align-items:center;gap:5px;cursor:pointer}
+.augs input{accent-color:var(--acc);width:15px;height:15px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid4 canvas{width:100%;aspect-ratio:1;image-rendering:pixelated;border:1px solid var(--line-soft);border-radius:4px;display:block}
+.fcell{position:relative}
+.fcell .note{width:100%;margin-top:3px;padding:3px 4px;font-size:10.5px}
+.fcell .fno{position:absolute;left:3px;top:1px;font-size:9.5px;font-weight:700;color:var(--ink3)}
+table.exam th,table.exam td{padding:5px 4px;text-align:center}
+table.exam td.nm{text-align:left;font-size:11px}
+table.exam td.low{color:var(--warn);font-weight:700}
+
 /* ── 튜토리얼 (Sense Lab 과 같은 말풍선) ── */
 .tour{position:fixed;inset:0;z-index:300}
 .tour-spot{position:fixed;border-radius:10px;pointer-events:none;border:2px solid var(--acc);
@@ -176,6 +214,10 @@ table.att tr.last th{color:var(--acc-ink);font-weight:800}
   #duelIn{font-size:16px}
   .seg button{font-size:13.5px;padding:7px 12px}
   .db.pad{width:76px;height:52px}
+  .eye-ai{width:100%}
+  .eye-src{max-width:none}
+  .augs{font-size:14px}
+  .fcell .note{font-size:12px}
   .sensor{font-size:12.5px}
   #overlay{font-size:15px}
 }
