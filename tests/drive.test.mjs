@@ -114,3 +114,37 @@ test('곧게만 가르치면 첫 커브 전에 부딪힌다', () => {
     assert.ok(car.crashed && car.progress < 0.5, `${t.def.id}: ${car.progress.toFixed(2)}바퀴`);
   }
 });
+
+// 필요할 때만 키를 누르는 학생 (차이가 dead 보다 클 때만 돌린다)
+function smoothDrive(track, rnd, laps, dead) {
+  const car = new Car(track), hist = [], rec = [];
+  let act = 1, held = 0;
+  for (let i = 0; i < 60 * 300; i++) {
+    const s = car.sense(); hist.push(s);
+    if (held <= 0) {
+      const v = hist[Math.max(0, hist.length - 1 - (5 + Math.floor(rnd() * 6)))];
+      const diff = (v[4] + v[5]) - (v[1] + v[2]);
+      const next = v[3] < 0.3 ? (diff > 0 ? 2 : 0) : diff > dead ? 2 : diff < -dead ? 0 : 1;
+      if (next !== act) { act = next; held = 3; }
+    } else held--;
+    if (i % RECORD_EVERY === 0) rec.push([hist[Math.max(0, hist.length - 1 - REACT_STEPS)], act]);
+    if (car.step(act) || car.progress >= laps) break;
+  }
+  return rec;
+}
+
+test('바퀴 수보다 좌우 균형: 둥근 트랙에서 한쪽만 돌면 다른 트랙에서 부딪힌다', () => {
+  // 둥근 트랙 한 바퀴를 필요할 때만 돌며 운전 → 한쪽 장면이 30개가 안 된다
+  const oneSided = smoothDrive(tracks[0], seeded(11), 1, 0.5);
+  const c = [0, 1, 2].map(k => oneSided.filter(r => r[1] === k).length);
+  assert.ok(Math.min(c[0], c[2]) < 30, `왼/곧/오 ${c}`);
+  const a = fit(oneSided).pol;
+  assert.ok(!aiDrive(tracks[0], a).crashed, '가르친 둥근 트랙은 돈다');
+  assert.ok(aiDrive(tracks[1], a).crashed || aiDrive(tracks[2], a).crashed, '다른 트랙에서는 부딪힌다');
+  // 구불구불 트랙 반 바퀴를 자주 고치며 운전 → 양쪽이 넉넉하고 세 트랙을 돈다
+  const balanced = smoothDrive(tracks[1], seeded(12), 0.5, 0.3);
+  const d = [0, 1, 2].map(k => balanced.filter(r => r[1] === k).length);
+  assert.ok(Math.min(d[0], d[2]) >= 30, `왼/곧/오 ${d}`);
+  const b = fit(balanced).pol;
+  for (const t of tracks) assert.ok(!aiDrive(t, b).crashed, `${t.def.id} 에서 부딪힘`);
+});

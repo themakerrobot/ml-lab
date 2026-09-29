@@ -130,6 +130,8 @@ table.att tr.last th{color:var(--acc-ink);font-weight:800}
 .sensor .bf{height:100%;background:var(--ok)}
 .sensor .sv{width:30px;flex-shrink:0;color:var(--ink2);font-weight:700}
 #trackPick .mradio .mt{color:var(--acc-ink)}
+.ready{margin-top:8px;padding:7px 9px;border-radius:8px;background:var(--panel2);font-size:12px;font-weight:700;color:var(--warn);line-height:1.5}
+.ready.ok{color:var(--ok);background:var(--ok-soft)}
 #runLog .saved i{flex-shrink:0}
 
 /* ── AI 눈 ── */

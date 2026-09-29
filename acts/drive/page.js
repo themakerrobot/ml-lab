@@ -20,6 +20,11 @@ const REACT_STEPS = 6;         // 6걸음 = 0.1초
 const AI_LAPS = 3;             // AI는 3바퀴 돌면 완주
 const EPOCHS = 60;
 const MIN_SAMPLES = 30;
+// 왼쪽·오른쪽으로 도는 장면이 각각 이만큼은 있어야 처음 보는 트랙에서도 잘 돈다.
+// 사람처럼 늦게 반응하는 가상 학생으로 재 보니 바퀴 수보다 이 균형이 중요했다:
+// 둥근 트랙만 돌며 왼쪽이 6~12장면이면 2바퀴를 돌아도 다른 트랙에서 곧 부딪혔고,
+// 양쪽이 각각 30장면을 넘으면 반 바퀴로도 세 트랙을 모두 돌았다 (DEVELOP.md).
+const READY_TURNS = 30;
 const ACT_LABEL = ['왼쪽', '곧게', '오른쪽'];
 const ACT_ICON = ['fa-arrow-left', 'fa-arrow-up', 'fa-arrow-right'];
 
@@ -99,6 +104,16 @@ function refreshCounts() {
       <div class="bt"><div class="bf" style="width:${n / max * 100}%"></div></div></div>`).join('');
   $('totalCnt').textContent = T('모두 {n}장면').replace('{n}', data.Y.length);
   $('trainBtn').disabled = training || data.Y.length < MIN_SAMPLES;
+  // 언제 배우기를 누르면 되나 — 도는 장면이 양쪽 다 충분한지
+  const short = [0, 2].filter(k => c[k] < READY_TURNS);
+  const r = $('readyHint');
+  if (!data.Y.length) { r.className = 'ready'; r.textContent = T('운전을 시작하면 장면이 쌓여요.'); }
+  else if (!short.length) { r.className = 'ready ok'; r.textContent = T('양쪽으로 도는 장면이 넉넉해요. 배우기를 눌러 봐요!'); }
+  else {
+    r.className = 'ready';
+    r.textContent = short.map(k => T('{dir}으로 도는 장면이 더 필요해요 ({n}/{need})')
+      .replace('{dir}', T(ACT_LABEL[k])).replace('{n}', c[k]).replace('{need}', READY_TURNS)).join(' ');
+  }
 }
 $('clearBtn').addEventListener('click', () => {
   if (!data.Y.length || !confirm(T('보여 준 운전을 모두 지울까요?'))) return;
@@ -148,12 +163,19 @@ function stop() {
 $('goBtn').addEventListener('click', go);
 $('stopBtn').addEventListener('click', stop);
 $('fastBtn').addEventListener('click', () => { fast = !fast; $('fastBtn').classList.toggle('on', fast); });
+// 속도: 게임 시간을 느리게 흘린다. 차의 물리·센서·학습은 그대로라 배운 AI도 똑같이 달린다.
+// (0.35~1배 모두에서 "0.1초 전 센서와 짝짓기(6걸음)" 로 배운 AI가 완주하는 것을 확인했다 — DEVELOP.md)
+let speed = 0.55;
+$('speedSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  speed = +b.dataset.s;
+  $('speedSeg').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b));
+}));
 const curStep = () => [1, 2, 3, 4].find(i => $('s' + i).classList.contains('on')) || 1;
 
 let last = 0, acc = 0;
 function loop(now) {
   if (!running) return;
-  acc += Math.min(0.1, (now - last) / 1000); last = now;
+  acc += Math.min(0.1, (now - last) / 1000) * speed; last = now;
   const mult = who === 'ai' && fast ? 3 : 1;
   let n = 0;
   while (acc >= DT && n < 12 * mult) {
