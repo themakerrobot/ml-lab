@@ -86,10 +86,10 @@ function drawThumb(c, def) {
   pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
   g.closePath();
   g.lineJoin = 'round';
-  g.strokeStyle = css('--panel'); g.lineWidth = def.width + 14; g.stroke();
-  g.strokeStyle = css('--ink2'); g.lineWidth = def.width; g.stroke();
+  g.strokeStyle = css('--line'); g.lineWidth = def.width + 16; g.stroke();
+  g.strokeStyle = css('--line-soft'); g.lineWidth = def.width; g.stroke();
   const [x0, y0] = pts[0], th = Math.atan2(pts[1][1] - y0, pts[1][0] - x0);
-  g.strokeStyle = css('--panel'); g.lineWidth = 14;
+  g.strokeStyle = css('--ink'); g.lineWidth = 14;
   g.beginPath();
   g.moveTo(x0 - Math.sin(th) * def.width / 2, y0 + Math.cos(th) * def.width / 2);
   g.lineTo(x0 + Math.sin(th) * def.width / 2, y0 - Math.cos(th) * def.width / 2);
@@ -330,8 +330,8 @@ function refreshLive() {
 }
 
 // ── 그리기 ──────────────────────────────────────────────────
-// 색은 모두 디자인 토큰에서 가져온다: 잔디 --ok-soft, 나무 --ok, 아스팔트 --ink2,
-// 차선 --panel, 연석 --warn/--panel 줄무늬, 내 차 --acc, AI 차 --ok, 부딪힌 차 --warn.
+// 색은 모두 디자인 토큰에서 가져온다: 잔디 --ok-soft, 길 --line-soft(옅은 회색), 가장자리 선 --line,
+// 가운데 점선 --panel, 연석 --warn/--panel 줄무늬, 내 차 --acc, AI 차 --ok, 부딪힌 차 --warn.
 // 그림은 꾸밈일 뿐 — 길 판정은 track.js 의 마스크(폭 = def.width)만 쓴다.
 const cv = $('cv');
 let roadCache = null, scale = 1;
@@ -344,16 +344,6 @@ function sizeCanvas() {
   cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
   scale = cv.width / WORLD_W;
   roadCache = null;
-}
-
-// 중심선에서 가장 가까운 거리 (나무를 길에서 떨어뜨려 심을 때만 쓴다)
-function distToRoad(x, y) {
-  let d = Infinity;
-  for (let i = 0; i < track.n; i += 3) {
-    const [px, py] = track.pts[i];
-    d = Math.min(d, (px - x) ** 2 + (py - y) ** 2);
-  }
-  return Math.sqrt(d);
 }
 
 // 트랙은 바뀔 때만 따로 그려 두고, 매 장면에는 복사만 한다 (저사양 PC 배려)
@@ -382,32 +372,14 @@ function renderRoad() {
   // 연석: 흰 바탕 위에 빨간 줄무늬 → 길 양쪽에 빨강·흰색 띠
   path(); g.strokeStyle = css('--panel'); g.lineWidth = W + 10; g.stroke();
   path(); g.strokeStyle = css('--warn'); g.setLineDash([9, 9]); g.stroke(); g.setLineDash([]);
-  // 아스팔트
-  path(); g.strokeStyle = css('--ink2'); g.lineWidth = W; g.stroke();
-  // 가장자리 흰 선: 흰 띠를 그리고 가운데를 다시 아스팔트로 덮는다
-  path(); g.strokeStyle = css('--panel'); g.globalAlpha = 0.85; g.lineWidth = W - 6; g.stroke(); g.globalAlpha = 1;
-  path(); g.strokeStyle = css('--ink2'); g.lineWidth = W - 9; g.stroke();
+  // 길: 옅은 회색 — 진한 차(--acc)와 센서 선이 잘 보이게
+  path(); g.strokeStyle = css('--line-soft'); g.lineWidth = W; g.stroke();
+  // 가장자리 선: 회색 띠를 그리고 가운데를 다시 길 색으로 덮는다
+  path(); g.strokeStyle = css('--line'); g.lineWidth = W - 5; g.stroke();
+  path(); g.strokeStyle = css('--line-soft'); g.lineWidth = W - 8; g.stroke();
   // 가운데 점선
-  path(); g.strokeStyle = css('--paper'); g.globalAlpha = 0.75; g.lineWidth = 2; g.setLineDash([14, 12]); g.stroke();
-  g.setLineDash([]); g.globalAlpha = 1;
-
-  // 나무: 길에서 충분히 떨어진 곳에만
-  const trees = [];
-  for (let k = 0; k < 400 && trees.length < 34; k++) {
-    const x = 14 + rnd() * (WORLD_W - 28), y = 14 + rnd() * (WORLD_H - 28), r = 7 + rnd() * 7;
-    if (distToRoad(x, y) < hw + 10 + r) continue;
-    if (trees.some(t => (t.x - x) ** 2 + (t.y - y) ** 2 < (t.r + r + 4) ** 2)) continue;
-    trees.push({ x, y, r });
-  }
-  for (const t of trees) {
-    g.fillStyle = css('--ink'); g.globalAlpha = 0.12;
-    g.beginPath(); g.arc(t.x + 2.5, t.y + 2.5, t.r, 0, Math.PI * 2); g.fill();
-    g.fillStyle = css('--ok'); g.globalAlpha = 0.55;
-    g.beginPath(); g.arc(t.x, t.y, t.r, 0, Math.PI * 2); g.fill();
-    g.globalAlpha = 0.85;
-    g.beginPath(); g.arc(t.x - t.r * 0.25, t.y - t.r * 0.25, t.r * 0.55, 0, Math.PI * 2); g.fill();
-  }
-  g.globalAlpha = 1;
+  path(); g.strokeStyle = css('--panel'); g.lineWidth = 2.5; g.setLineDash([14, 12]); g.stroke();
+  g.setLineDash([]);
 
   // 출발선: 체크무늬 두 줄
   const [x0, y0] = track.pts[0], th = track.start.th;
@@ -420,7 +392,7 @@ function renderRoad() {
     }
   }
   // 달리는 방향 화살표 (출발선 바로 앞)
-  g.fillStyle = css('--paper'); g.globalAlpha = 0.55;
+  g.fillStyle = css('--line'); g.globalAlpha = 0.8;
   for (const ax of [22, 40]) {
     g.beginPath(); g.moveTo(ax + 7, 0); g.lineTo(ax - 3, -8); g.lineTo(ax - 3, 8); g.closePath(); g.fill();
   }
@@ -480,12 +452,12 @@ function draw() {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.drawImage(roadCache, 0, 0);
   g.setTransform(scale, 0, 0, scale, 0, 0);
-  // 센서 광선 — 어두운 길 위에서도 보이게 밝은 선 + 끝점
-  g.lineWidth = 1.2;
+  // 센서 광선 — 선 + 끝점
+  g.lineWidth = 1.4;
   lastSense.forEach((v, i) => {
     const a = car.th + RAY_DEG[i] * Math.PI / 180, r = v * RAY_MAX;
     const ex = car.x + Math.cos(a) * r, ey = car.y + Math.sin(a) * r;
-    g.strokeStyle = css('--ok-soft'); g.globalAlpha = 0.8;
+    g.strokeStyle = css('--ok'); g.globalAlpha = 0.75;
     g.beginPath(); g.moveTo(car.x, car.y); g.lineTo(ex, ey); g.stroke();
     g.globalAlpha = 1;
     g.fillStyle = css('--ok'); g.strokeStyle = css('--panel');
