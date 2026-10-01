@@ -5,6 +5,8 @@
 // 2. 사람처럼 늦게 반응하는 학생의 운전을 "0.1초 전 센서"와 짝지어 배우면
 //    가르칠 때 안 쓴 트랙까지 완주한다 (화면의 기록 방식과 같다)
 // 3. 곧게만 가르치면 곧 부딪힌다 — 수업에서 보여 주는 바로 그 현상
+// 4. 바퀴 수보다 좌우 균형, 그리고 급한 커브도 보여 줘야 한다 (화면의 "언제 배우기를 누르나" 안내)
+// 트랙은 10개 × 두 방향 = 20코스. 트랙을 더하면 아래 검사가 모든 코스에서 다시 돈다.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +14,10 @@ import { TRACKS, buildTrack } from '../acts/drive/track.js';
 import { Car, teacher } from '../acts/drive/sim.js';
 import { Policy } from '../acts/drive/policy.js';
 
-const tracks = TRACKS.map(buildTrack);
+const tracks = TRACKS.map(d => buildTrack(d));
+const courses = TRACKS.flatMap(d => [buildTrack(d), buildTrack(d, true)]);
+const byId = (id, rev = false) => buildTrack(TRACKS.find(d => d.id === id), rev);
+const name = t => t.def.id + (t.reverse ? '(거꾸로)' : '');
 const REACT_STEPS = 6, RECORD_EVERY = 3;   // acts/drive/page.js 와 같은 값
 
 function inF64(fn) {
@@ -46,7 +51,7 @@ function studentDrive(track, rnd, { lagMin = 8, lagMax = 16, hold = 6, steps = 6
 
 function aiDrive(track, pol, laps = 2) {
   const car = new Car(track);
-  for (let i = 0; i < 60 * 90; i++) {
+  for (let i = 0; i < 60 * 120; i++) {
     const P = pol.predict(car.sense());
     if (car.step(P.indexOf(Math.max(...P))) || car.progress >= laps) break;
   }
@@ -80,38 +85,67 @@ test('Policy 역전파 = 수치 미분', () => inF64(() => {
   assert.ok(worst < 1e-4, `최대 상대오차 ${worst}`);
 }));
 
-test('선생님 운전은 세 트랙을 모두 돈다', () => {
+test('트랙 모양: 화면 안에 있고, 떨어진 길끼리 붙지 않는다', () => {
   for (const t of tracks) {
-    const car = new Car(t);
-    for (let i = 0; i < 60 * 60 && !car.crashed && car.progress < 2; i++) car.step(teacher(car.sense()));
-    assert.ok(!car.crashed && car.progress >= 2, `${t.def.id}: ${car.progress.toFixed(2)}바퀴`);
+    const { pts, n, hw } = t;
+    for (const [x, y] of pts) assert.ok(x - hw >= 0 && x + hw <= 800 && y - hw >= 0 && y + hw <= 520, `${t.def.id} 가 화면 밖 (${x | 0},${y | 0})`);
+    // 길을 따라 250 이상 떨어진 두 곳은 폭 + 18 보다 멀어야 한다 (사이에 잔디가 보이게)
+    const cum = [0];
+    for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const len = cum[n - 1];
+    let dmin = Infinity;
+    for (let i = 0; i < n; i += 2) for (let j = i + 1; j < n; j += 2) {
+      const arc = cum[j] - cum[i];
+      if (Math.min(arc, len - arc) < 250) continue;
+      dmin = Math.min(dmin, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]));
+    }
+    assert.ok(dmin > t.def.width + 18, `${t.def.id}: 가장 가까운 두 길 ${dmin.toFixed(0)}`);
   }
+});
+
+test('선생님 운전은 20코스(10트랙 × 두 방향)를 모두 돈다', () => {
+  for (const t of courses) {
+    const car = new Car(t);
+    for (let i = 0; i < 60 * 90 && !car.crashed && car.progress < 2; i++) car.step(teacher(car.sense()));
+    assert.ok(!car.crashed && car.progress >= 2, `${name(t)}: ${car.progress.toFixed(2)}바퀴`);
+  }
+});
+
+test('거꾸로 = 같은 길, 반대 방향', () => {
+  const f = byId('oval'), r = byId('oval', true);
+  assert.equal(f.mask, r.mask);
+  assert.deepEqual(f.pts[0], r.pts[0]);
+  // 둥근 트랙: 기본 방향은 오른쪽, 거꾸로는 왼쪽으로만 돈다
+  const turns = t => { const car = new Car(t), c = [0, 0, 0]; for (let i = 0; i < 600; i++) { const a = teacher(car.sense()); c[a]++; car.step(a); } return c; };
+  const a = turns(f), b = turns(r);
+  assert.ok(a[2] > a[0] && b[0] > b[2], `기본 ${a} / 거꾸로 ${b}`);
 });
 
 test('늦게 반응하는 학생의 운전으로 배운 AI가 처음 보는 트랙까지 완주한다', () => {
   const rnd = seeded(42), rec = [];
-  for (const t of tracks.filter(t => !t.def.unseen)) {
-    const { car, rec: r } = studentDrive(t, rnd);
-    assert.ok(!car.crashed, `학생이 ${t.def.id} 에서 부딪힘`);
+  // 둥근 트랙 + 구불구불 트랙에서만 가르친다
+  for (const id of ['oval', 'wavy']) {
+    const { car, rec: r } = studentDrive(byId(id), rnd);
+    assert.ok(!car.crashed, `학생이 ${id} 에서 부딪힘`);
     rec.push(...r);
   }
   const { pol, acc } = fit(rec);
   assert.ok(acc > 0.8, `맞힌 비율 ${acc}`);
-  for (const t of tracks) {
+  for (const t of courses) {
     const car = aiDrive(t, pol);
-    assert.ok(!car.crashed, `AI가 ${t.def.id} 에서 ${car.progress.toFixed(2)}바퀴 만에 부딪힘`);
+    assert.ok(!car.crashed, `AI가 ${name(t)} 에서 ${car.progress.toFixed(2)}바퀴 만에 부딪힘`);
   }
 });
 
 test('곧게만 가르치면 첫 커브 전에 부딪힌다', () => {
   const rnd = seeded(7), rec = [];
-  for (const t of tracks.filter(t => !t.def.unseen)) rec.push(...studentDrive(t, rnd).rec);
+  for (const id of ['oval', 'wavy']) rec.push(...studentDrive(byId(id), rnd).rec);
   const straight = rec.filter(r => r[1] === 1);
   // 한 종류만 있으면 분류기가 늘 "곧게" 를 고른다
   const { pol } = fit(straight, 3, 20);
-  for (const t of tracks) {
+  for (const t of courses) {
     const car = aiDrive(t, pol);
-    assert.ok(car.crashed && car.progress < 0.5, `${t.def.id}: ${car.progress.toFixed(2)}바퀴`);
+    assert.ok(car.crashed && car.progress < 0.5, `${name(t)}: ${car.progress.toFixed(2)}바퀴`);
   }
 });
 
@@ -135,16 +169,27 @@ function smoothDrive(track, rnd, laps, dead) {
 
 test('바퀴 수보다 좌우 균형: 둥근 트랙에서 한쪽만 돌면 다른 트랙에서 부딪힌다', () => {
   // 둥근 트랙 한 바퀴를 필요할 때만 돌며 운전 → 한쪽 장면이 30개가 안 된다
-  const oneSided = smoothDrive(tracks[0], seeded(11), 1, 0.5);
+  const oneSided = smoothDrive(byId('oval'), seeded(11), 1, 0.5);
   const c = [0, 1, 2].map(k => oneSided.filter(r => r[1] === k).length);
   assert.ok(Math.min(c[0], c[2]) < 30, `왼/곧/오 ${c}`);
   const a = fit(oneSided).pol;
-  assert.ok(!aiDrive(tracks[0], a).crashed, '가르친 둥근 트랙은 돈다');
-  assert.ok(aiDrive(tracks[1], a).crashed || aiDrive(tracks[2], a).crashed, '다른 트랙에서는 부딪힌다');
-  // 구불구불 트랙 반 바퀴를 자주 고치며 운전 → 양쪽이 넉넉하고 세 트랙을 돈다
-  const balanced = smoothDrive(tracks[1], seeded(12), 0.5, 0.3);
+  assert.ok(!aiDrive(byId('oval'), a).crashed, '가르친 둥근 트랙은 돈다');
+  assert.ok(aiDrive(byId('wavy'), a).crashed && aiDrive(byId('test'), a).crashed, '다른 트랙에서는 부딪힌다');
+  // 구불구불 트랙 반 바퀴를 자주 고치며 운전 → 양쪽이 넉넉하고 20코스를 모두 돈다
+  const balanced = smoothDrive(byId('wavy'), seeded(12), 0.5, 0.3);
   const d = [0, 1, 2].map(k => balanced.filter(r => r[1] === k).length);
   assert.ok(Math.min(d[0], d[2]) >= 30, `왼/곧/오 ${d}`);
   const b = fit(balanced).pol;
-  for (const t of tracks) assert.ok(!aiDrive(t, b).crashed, `${t.def.id} 에서 부딪힘`);
+  for (const t of courses) assert.ok(!aiDrive(t, b).crashed, `${name(t)} 에서 부딪힘`);
+});
+
+test('쉬운 트랙만 양방향으로 돌면 양쪽은 넉넉해도 급한 커브에서 부딪힌다', () => {
+  // 둥근 트랙을 기본 방향 1바퀴 + 거꾸로 1바퀴 → 왼쪽·오른쪽 모두 30장면 넘음
+  const rec = [...smoothDrive(byId('oval'), seeded(11), 1, 0.5), ...smoothDrive(byId('oval', true), seeded(13), 1, 0.5)];
+  const c = [0, 1, 2].map(k => rec.filter(r => r[1] === k).length);
+  assert.ok(Math.min(c[0], c[2]) >= 30, `왼/곧/오 ${c}`);
+  const pol = fit(rec).pol;
+  assert.ok(!aiDrive(byId('oval'), pol).crashed && !aiDrive(byId('oval', true), pol).crashed, '둥근 트랙은 양쪽 다 돈다');
+  const failed = courses.filter(t => aiDrive(t, pol).crashed);
+  assert.ok(failed.some(t => t.def.level === 3), `부딪힌 코스: ${failed.map(name).join(', ') || '없음'}`);
 });

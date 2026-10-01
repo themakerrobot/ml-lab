@@ -5,7 +5,7 @@
 // AI가 운전하는 중에 내가 키를 누르면 내 운전이 이기고, 그 장면도 기록된다
 // (고쳐 가르치기 — 모방학습의 DAgger 와 같은 생각).
 
-import { TRACKS, WORLD_W, WORLD_H, buildTrack } from './track.js';
+import { TRACKS, WORLD_W, WORLD_H, buildTrack, centerline } from './track.js';
 import { Car, RAY_DEG, RAY_MAX, DT } from './sim.js';
 import { Policy } from './policy.js';
 
@@ -22,21 +22,31 @@ const EPOCHS = 60;
 const MIN_SAMPLES = 30;
 // 왼쪽·오른쪽으로 도는 장면이 각각 이만큼은 있어야 처음 보는 트랙에서도 잘 돈다.
 // 사람처럼 늦게 반응하는 가상 학생으로 재 보니 바퀴 수보다 이 균형이 중요했다:
-// 둥근 트랙만 돌며 왼쪽이 6~12장면이면 2바퀴를 돌아도 다른 트랙에서 곧 부딪혔고,
-// 양쪽이 각각 30장면을 넘으면 반 바퀴로도 세 트랙을 모두 돌았다 (DEVELOP.md).
+// 둥근 트랙만 돌며 왼쪽이 6~15장면이면 다른 트랙에서 곧 부딪혔고,
+// 양쪽이 각각 30장면을 넘으면 구불구불 트랙 반 바퀴로도 20개 코스를 모두 돌았다.
+// 다만 쉬운 트랙(둥근·경기장)만 양방향으로 돌면 양쪽 장면은 넉넉해도 급한 커브를
+// 못 배워 산길·콩 트랙에서 부딪혔다 — 그래서 쉬운 트랙에서만 모았으면 따로 알려 준다.
 const READY_TURNS = 30;
 const ACT_LABEL = ['왼쪽', '곧게', '오른쪽'];
 const ACT_ICON = ['fa-arrow-left', 'fa-arrow-up', 'fa-arrow-right'];
+const LEVEL_LABEL = ['', '쉬움', '보통', '어려움'];
 
 // ── 상태 ────────────────────────────────────────────────────
-const built = TRACKS.map(buildTrack);
-let track = built[0];
+// 트랙은 고를 때 만든다 (마스크 만들기가 무거워서 처음에 10개를 다 만들지 않는다)
+const builtCache = new Map();
+function getTrack(i, rev) {
+  const key = i + (rev ? 'r' : 'f');
+  if (!builtCache.has(key)) builtCache.set(key, buildTrack(TRACKS[i], rev));
+  return builtCache.get(key);
+}
+let trackIdx = 0, reverse = false;
+let track = getTrack(0, false);
 const car = new Car(track);
 let who = 'me';                 // 'me' | 'ai'
 let running = false, fast = false;
 let tick = 0;
 const keys = { left: false, right: false };
-const data = { X: [], Y: [] };  // 센서 7개 → 0/1/2
+const data = { X: [], Y: [], L: [] };  // 센서 7개 → 0/1/2, L = 그 장면을 모은 트랙의 난이도
 let policy = null, training = false;
 let lastSense = car.sense(), lastAction = 1, lastByMe = false, cutIns = 0;
 let senseHist = [];             // 최근 센서값 (REACT_STEPS+1 개까지)
@@ -46,7 +56,7 @@ const runs = [];
 let toastTimer = 0;
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('on');
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2400);
 }
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function setStep(n) {
@@ -57,23 +67,55 @@ function setStep(n) {
 }
 const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
 const argmax = P => P.indexOf(Math.max(...P));
+const trackName = (t = track) => T(t.def.label) + (t.reverse ? ` (${T('거꾸로')})` : '');
 
-// ── 트랙 고르기 ─────────────────────────────────────────────
-built.forEach((t, i) => {
+// 같은 씨앗이면 늘 같은 수 — 나무·풀 자리가 그릴 때마다 바뀌지 않게
+function seeded(str) {
+  let s = 0;
+  for (const ch of str) s = (s * 31 + ch.charCodeAt(0)) >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+// ── 트랙 고르기 (미니 그림 카드) ────────────────────────────
+function drawThumb(c, def) {
+  const g = c.getContext('2d'), sc = c.width / WORLD_W;
+  g.fillStyle = css('--ok-soft'); g.fillRect(0, 0, c.width, c.height);
+  g.setTransform(sc, 0, 0, sc, 0, 0);
+  const pts = centerline(def);
+  g.beginPath();
+  pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+  g.closePath();
+  g.lineJoin = 'round';
+  g.strokeStyle = css('--panel'); g.lineWidth = def.width + 14; g.stroke();
+  g.strokeStyle = css('--ink2'); g.lineWidth = def.width; g.stroke();
+  const [x0, y0] = pts[0], th = Math.atan2(pts[1][1] - y0, pts[1][0] - x0);
+  g.strokeStyle = css('--panel'); g.lineWidth = 14;
+  g.beginPath();
+  g.moveTo(x0 - Math.sin(th) * def.width / 2, y0 + Math.cos(th) * def.width / 2);
+  g.lineTo(x0 + Math.sin(th) * def.width / 2, y0 - Math.cos(th) * def.width / 2);
+  g.stroke();
+}
+TRACKS.forEach((def, i) => {
   const el = document.createElement('div');
-  el.className = 'mradio' + (i === 0 ? ' on' : '');
-  el.innerHTML = `<i class="fa-solid ${t.def.unseen ? 'fa-flag-checkered' : 'fa-road'}"></i>
-    <span class="nm">${T(t.def.label)}</span>
-    <span class="mt">${t.def.unseen ? T('시험용') : ''}</span>`;
-  el.addEventListener('click', () => pickTrack(i));
+  el.className = 'tcard' + (i === 0 ? ' on' : '');
+  el.innerHTML = `<canvas width="160" height="104"></canvas>
+    <div class="tn"><span>${T(def.label)}</span></div>
+    <div class="tl${def.unseen ? ' test' : ''}">${def.unseen ? `<i class="fa-solid fa-flag-checkered"></i> ${T('시험용')} · ` : ''}${T(LEVEL_LABEL[def.level])}</div>`;
+  el.addEventListener('click', () => pickTrack(i, reverse));
   $('trackPick').appendChild(el);
+  drawThumb(el.querySelector('canvas'), def);
 });
-function pickTrack(i) {
+$('dirSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  pickTrack(trackIdx, b.dataset.r === '1');
+}));
+function pickTrack(i, rev) {
   if (running) stop();
-  track = built[i];
+  trackIdx = i; reverse = rev;
+  track = getTrack(i, rev);
   car.reset(track);
   [...$('trackPick').children].forEach((el, j) => el.classList.toggle('on', j === i));
-  $('panTitle').textContent = T(track.def.label);
+  $('dirSeg').querySelectorAll('button').forEach(o => o.classList.toggle('on', (o.dataset.r === '1') === rev));
+  $('panTitle').textContent = trackName();
   if (track.def.unseen && policy) setStep(4);
   roadCache = null;
   overlay('');
@@ -104,20 +146,22 @@ function refreshCounts() {
       <div class="bt"><div class="bf" style="width:${n / max * 100}%"></div></div></div>`).join('');
   $('totalCnt').textContent = T('모두 {n}장면').replace('{n}', data.Y.length);
   $('trainBtn').disabled = training || data.Y.length < MIN_SAMPLES;
-  // 언제 배우기를 누르면 되나 — 도는 장면이 양쪽 다 충분한지
+  // 언제 배우기를 누르면 되나 — 도는 장면이 양쪽 다 충분한지, 급한 커브도 보여 줬는지
   const short = [0, 2].filter(k => c[k] < READY_TURNS);
   const r = $('readyHint');
   if (!data.Y.length) { r.className = 'ready'; r.textContent = T('운전을 시작하면 장면이 쌓여요.'); }
-  else if (!short.length) { r.className = 'ready ok'; r.textContent = T('양쪽으로 도는 장면이 넉넉해요. 배우기를 눌러 봐요!'); }
-  else {
+  else if (short.length) {
     r.className = 'ready';
     r.textContent = short.map(k => T('{dir}으로 도는 장면이 더 필요해요 ({n}/{need})')
       .replace('{dir}', T(ACT_LABEL[k])).replace('{n}', c[k]).replace('{need}', READY_TURNS)).join(' ');
-  }
+  } else if (Math.max(...data.L) < 2) {
+    r.className = 'ready';
+    r.textContent = T('양쪽 장면은 넉넉해요. 그런데 쉬운 트랙에서만 모았어요 — 커브가 급한 트랙(보통·어려움)에서도 조금 보여 주세요.');
+  } else { r.className = 'ready ok'; r.textContent = T('양쪽으로 도는 장면이 넉넉해요. 배우기를 눌러 봐요!'); }
 }
 $('clearBtn').addEventListener('click', () => {
   if (!data.Y.length || !confirm(T('보여 준 운전을 모두 지울까요?'))) return;
-  data.X = []; data.Y = []; refreshCounts();
+  data.X = []; data.Y = []; data.L = []; refreshCounts();
 });
 
 // ── 운전 입력 (키보드 · 화면 버튼) ──────────────────────────
@@ -195,6 +239,7 @@ function stepOnce() {
   else { a = argmax(policy.predict(s)); byMe = false; }
   if (byMe && tick % RECORD_EVERY === 0) {
     data.X.push(senseHist[0]); data.Y.push(a);     // 0.1초 전 장면 + 지금 누른 키
+    data.L.push(track.def.level);
     if (who === 'ai') cutIns++;
     refreshCounts();
   }
@@ -213,14 +258,11 @@ function stepOnce() {
 
 function logRun(done) {
   const p = Math.max(0, car.progress);
-  runs.unshift({
-    track: track.def.label, unseen: !!track.def.unseen, done,
-    prog: p, cutIns, samples: data.Y.length,
-  });
+  runs.unshift({ name: trackName(), done, prog: p, cutIns });
   runs.length = Math.min(runs.length, 6);
   $('runLog').innerHTML = runs.map(r => `
     <div class="saved"><i class="fa-solid ${r.done ? 'fa-flag-checkered' : 'fa-car-burst'}" style="color:var(${r.done ? '--ok' : '--warn'})"></i>
-      <span class="nm">${T(r.track)}</span>
+      <span class="nm">${r.name}</span>
       <span class="mt">${r.done ? T('완주') : `${r.prog.toFixed(1)}${T('바퀴에서 멈춤')}`}${r.cutIns ? ` · ${T('끼어들기')} ${r.cutIns}` : ''}</span></div>`).join('');
 }
 
@@ -288,6 +330,9 @@ function refreshLive() {
 }
 
 // ── 그리기 ──────────────────────────────────────────────────
+// 색은 모두 디자인 토큰에서 가져온다: 잔디 --ok-soft, 나무 --ok, 아스팔트 --ink2,
+// 차선 --panel, 연석 --warn/--panel 줄무늬, 내 차 --acc, AI 차 --ok, 부딪힌 차 --warn.
+// 그림은 꾸밈일 뿐 — 길 판정은 track.js 의 마스크(폭 = def.width)만 쓴다.
 const cv = $('cv');
 let roadCache = null, scale = 1;
 
@@ -301,27 +346,130 @@ function sizeCanvas() {
   roadCache = null;
 }
 
+// 중심선에서 가장 가까운 거리 (나무를 길에서 떨어뜨려 심을 때만 쓴다)
+function distToRoad(x, y) {
+  let d = Infinity;
+  for (let i = 0; i < track.n; i += 3) {
+    const [px, py] = track.pts[i];
+    d = Math.min(d, (px - x) ** 2 + (py - y) ** 2);
+  }
+  return Math.sqrt(d);
+}
+
 // 트랙은 바뀔 때만 따로 그려 두고, 매 장면에는 복사만 한다 (저사양 PC 배려)
 function renderRoad() {
   const c = document.createElement('canvas');
   c.width = cv.width; c.height = cv.height;
   const g = c.getContext('2d');
-  g.fillStyle = css('--panel2'); g.fillRect(0, 0, c.width, c.height);
+  const W = track.def.width, hw = track.hw;
+  const rnd = seeded(track.def.id);
+  // 잔디
+  g.fillStyle = css('--ok-soft'); g.fillRect(0, 0, c.width, c.height);
   g.setTransform(scale, 0, 0, scale, 0, 0);
+  g.strokeStyle = css('--ok'); g.lineWidth = 1; g.globalAlpha = 0.22;
+  for (let k = 0; k < 260; k++) {
+    const x = rnd() * WORLD_W, y = rnd() * WORLD_H;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x - 1.5, y - 4); g.moveTo(x, y); g.lineTo(x + 1.5, y - 4); g.stroke();
+  }
+  g.globalAlpha = 1;
+
   const path = () => {
     g.beginPath();
     track.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
     g.closePath();
   };
-  g.lineJoin = 'round';
-  path(); g.strokeStyle = css('--line'); g.lineWidth = track.def.width + 4; g.stroke();
-  path(); g.strokeStyle = css('--line-soft'); g.lineWidth = track.def.width; g.stroke();
-  path(); g.strokeStyle = css('--panel'); g.lineWidth = 1.5; g.setLineDash([8, 10]); g.stroke(); g.setLineDash([]);
-  // 출발선
-  const [x0, y0] = track.pts[0], th = track.start.th, nx = -Math.sin(th), ny = Math.cos(th);
-  g.strokeStyle = css('--ink'); g.lineWidth = 4;
-  g.beginPath(); g.moveTo(x0 + nx * track.hw, y0 + ny * track.hw); g.lineTo(x0 - nx * track.hw, y0 - ny * track.hw); g.stroke();
+  g.lineJoin = 'round'; g.lineCap = 'butt';
+  // 연석: 흰 바탕 위에 빨간 줄무늬 → 길 양쪽에 빨강·흰색 띠
+  path(); g.strokeStyle = css('--panel'); g.lineWidth = W + 10; g.stroke();
+  path(); g.strokeStyle = css('--warn'); g.setLineDash([9, 9]); g.stroke(); g.setLineDash([]);
+  // 아스팔트
+  path(); g.strokeStyle = css('--ink2'); g.lineWidth = W; g.stroke();
+  // 가장자리 흰 선: 흰 띠를 그리고 가운데를 다시 아스팔트로 덮는다
+  path(); g.strokeStyle = css('--panel'); g.globalAlpha = 0.85; g.lineWidth = W - 6; g.stroke(); g.globalAlpha = 1;
+  path(); g.strokeStyle = css('--ink2'); g.lineWidth = W - 9; g.stroke();
+  // 가운데 점선
+  path(); g.strokeStyle = css('--paper'); g.globalAlpha = 0.75; g.lineWidth = 2; g.setLineDash([14, 12]); g.stroke();
+  g.setLineDash([]); g.globalAlpha = 1;
+
+  // 나무: 길에서 충분히 떨어진 곳에만
+  const trees = [];
+  for (let k = 0; k < 400 && trees.length < 34; k++) {
+    const x = 14 + rnd() * (WORLD_W - 28), y = 14 + rnd() * (WORLD_H - 28), r = 7 + rnd() * 7;
+    if (distToRoad(x, y) < hw + 10 + r) continue;
+    if (trees.some(t => (t.x - x) ** 2 + (t.y - y) ** 2 < (t.r + r + 4) ** 2)) continue;
+    trees.push({ x, y, r });
+  }
+  for (const t of trees) {
+    g.fillStyle = css('--ink'); g.globalAlpha = 0.12;
+    g.beginPath(); g.arc(t.x + 2.5, t.y + 2.5, t.r, 0, Math.PI * 2); g.fill();
+    g.fillStyle = css('--ok'); g.globalAlpha = 0.55;
+    g.beginPath(); g.arc(t.x, t.y, t.r, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 0.85;
+    g.beginPath(); g.arc(t.x - t.r * 0.25, t.y - t.r * 0.25, t.r * 0.55, 0, Math.PI * 2); g.fill();
+  }
+  g.globalAlpha = 1;
+
+  // 출발선: 체크무늬 두 줄
+  const [x0, y0] = track.pts[0], th = track.start.th;
+  g.save(); g.translate(x0, y0); g.rotate(th);
+  const sq = 5, rows = Math.ceil(W / sq);
+  for (let j = 0; j < rows; j++) {
+    for (let k = 0; k < 2; k++) {
+      g.fillStyle = (j + k) % 2 ? css('--ink') : css('--panel');
+      g.fillRect(-sq + k * sq, -hw + j * sq, sq, Math.min(sq, hw * 2 - j * sq));
+    }
+  }
+  // 달리는 방향 화살표 (출발선 바로 앞)
+  g.fillStyle = css('--paper'); g.globalAlpha = 0.55;
+  for (const ax of [22, 40]) {
+    g.beginPath(); g.moveTo(ax + 7, 0); g.lineTo(ax - 3, -8); g.lineTo(ax - 3, 8); g.closePath(); g.fill();
+  }
+  g.restore();
+  g.globalAlpha = 1;
   return c;
+}
+
+function roundRect(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+  g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
+  g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y);
+  g.closePath();
+}
+
+// 차: 길이 24 · 폭 13 을 1.2배로 그린다 (작은 화면에서도 차 모양이 보이게).
+// 판정은 가운데와 앞쪽 9 지점 두 점뿐이라, 부딪힐 때 앞코가 연석에 조금 걸쳐 보인다.
+function drawCar(g) {
+  const body = car.crashed ? css('--warn') : (who === 'ai' && !lastByMe ? css('--ok') : css('--acc'));
+  const steer = car.crashed ? 0 : (lastAction - 1) * 0.4;    // 앞바퀴를 도는 쪽으로 꺾어 그린다
+  g.save(); g.translate(car.x, car.y); g.rotate(car.th); g.scale(1.2, 1.2);
+  // 그림자
+  g.fillStyle = css('--ink'); g.globalAlpha = 0.25;
+  roundRect(g, -11, -5.5, 24, 13, 4); g.fill();
+  g.globalAlpha = 1;
+  // 바퀴 넷
+  g.fillStyle = css('--ink');
+  for (const [wx, wy, st] of [[-7, -6.8, 0], [-7, 6.8, 0], [7, -6.8, steer], [7, 6.8, steer]]) {
+    g.save(); g.translate(wx, wy); g.rotate(st); g.fillRect(-3, -1.6, 6, 3.2); g.restore();
+  }
+  // 차체
+  g.fillStyle = body;
+  roundRect(g, -12, -6.5, 24, 13, 4); g.fill();
+  // 지붕 (조금 어둡게)
+  g.fillStyle = css('--ink'); g.globalAlpha = 0.22;
+  roundRect(g, -6, -5, 9, 10, 2.5); g.fill();
+  g.globalAlpha = 1;
+  // 앞유리 · 뒷유리
+  g.fillStyle = css('--acc-soft');
+  g.beginPath(); g.moveTo(3, -5); g.lineTo(6.5, -5.6); g.lineTo(6.5, 5.6); g.lineTo(3, 5); g.closePath(); g.fill();
+  g.beginPath(); g.moveTo(-6, -4.6); g.lineTo(-8, -5); g.lineTo(-8, 5); g.lineTo(-6, 4.6); g.closePath(); g.fill();
+  // 전조등 · 미등
+  g.fillStyle = css('--paper');
+  g.fillRect(10.5, -5, 1.5, 3); g.fillRect(10.5, 2, 1.5, 3);
+  g.fillStyle = css('--warn');
+  g.fillRect(-12, -5, 1.2, 2.6); g.fillRect(-12, 2.4, 1.2, 2.6);
+  g.restore();
 }
 
 function draw() {
@@ -332,21 +480,18 @@ function draw() {
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.drawImage(roadCache, 0, 0);
   g.setTransform(scale, 0, 0, scale, 0, 0);
-  // 센서 광선
-  g.strokeStyle = css('--ok'); g.fillStyle = css('--ok'); g.lineWidth = 1.2; g.globalAlpha = 0.7;
+  // 센서 광선 — 어두운 길 위에서도 보이게 밝은 선 + 끝점
+  g.lineWidth = 1.2;
   lastSense.forEach((v, i) => {
     const a = car.th + RAY_DEG[i] * Math.PI / 180, r = v * RAY_MAX;
     const ex = car.x + Math.cos(a) * r, ey = car.y + Math.sin(a) * r;
+    g.strokeStyle = css('--ok-soft'); g.globalAlpha = 0.8;
     g.beginPath(); g.moveTo(car.x, car.y); g.lineTo(ex, ey); g.stroke();
-    g.beginPath(); g.arc(ex, ey, 2.5, 0, Math.PI * 2); g.fill();
+    g.globalAlpha = 1;
+    g.fillStyle = css('--ok'); g.strokeStyle = css('--panel');
+    g.beginPath(); g.arc(ex, ey, 2.8, 0, Math.PI * 2); g.fill(); g.stroke();
   });
-  g.globalAlpha = 1;
-  // 차
-  g.save(); g.translate(car.x, car.y); g.rotate(car.th);
-  g.fillStyle = car.crashed ? css('--warn') : (who === 'ai' && !lastByMe ? css('--ok') : css('--acc'));
-  g.fillRect(-11, -6, 22, 12);
-  g.fillStyle = css('--panel'); g.fillRect(3, -4, 5, 8);   // 앞유리 = 앞쪽 표시
-  g.restore();
+  drawCar(g);
   $('lapBadge').textContent = `${Math.max(0, car.progress).toFixed(1)}${T('바퀴')}`;
 }
 
@@ -359,7 +504,7 @@ new ResizeObserver(() => { sizeCanvas(); draw(); }).observe($('trackBox'));
 addEventListener('resize', drawChart);
 
 // ── 시작 ────────────────────────────────────────────────────
-$('panTitle').textContent = T(track.def.label);
+$('panTitle').textContent = trackName();
 $('engine').textContent = T('인터넷 없이 이 컴퓨터에서 배워요');
 refreshCounts();
 sizeCanvas(); refreshLive(); draw();

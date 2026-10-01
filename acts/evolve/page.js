@@ -141,9 +141,16 @@ function stats() {
 
 const stage = $('stage');
 let last = 0, accT = 0;
+// 다시 보기 속도. 30세대 뒤 생물은 다리를 1초에 2.5번까지 흔들고 초속 5m 넘게 구르기도 해서
+// 실제 속도로는 어떻게 움직이는지 보기 어렵다. 기본은 0.5배 (초 표시는 생물 시간 그대로).
+let playSpeed = 0.5;
+$('playSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  playSpeed = +b.dataset.s;
+  $('playSeg').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b));
+}));
 function frame(now) {
   requestAnimationFrame(frame);
-  accT += Math.min(0.1, (now - (last || now)) / 1000); last = now;
+  accT += Math.min(0.1, (now - (last || now)) / 1000) * playSpeed; last = now;
   if (replay) {
     while (accT >= DT) {
       accT -= DT;

@@ -386,6 +386,13 @@ $('beltLight').querySelectorAll('button').forEach(b => b.addEventListener('click
   beltLight = b.dataset.l; $('beltLight').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b));
 }));
 const patchCv = document.createElement('canvas'); patchCv.width = patchCv.height = 24;
+// 벨트 속도 (픽셀/초). 블록 간격이 70이라 보통이면 1초에 한 개씩 로봇 눈을 지난다.
+// 예전 110 은 0.64초마다 하나라 맞았는지(○×) 읽기 전에 다음 블록이 왔다.
+let beltSpeed = 70;
+$('beltSpeed').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  beltSpeed = +b.dataset.s;
+  $('beltSpeed').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b));
+}));
 $('beltGo').addEventListener('click', () => {
   if (!st.robot.lut) { toast(T('먼저 두 가지 이상 칠해서 가르쳐 주세요')); return; }
   const rnd = seeded((Math.random() * 1e9) | 0);
@@ -395,7 +402,7 @@ $('beltGo').addEventListener('click', () => {
     const p = blockPatch(BLOCKS[b].rgb, LIGHTS[beltLight], rnd);
     const cv = document.createElement('canvas'); cv.width = cv.height = 24;
     cv.getContext('2d').putImageData(new ImageData(p.data, 24, 24), 0, 0);
-    beltRun.items.push({ b, p, cv, x: -40 - n * 70, got: null });
+    beltRun.items.push({ b, p, cv, x: 60 - n * 70, got: null });   // 첫 블록은 벨트 위에서 출발 (느리게여도 4초 안에 로봇 눈에 닿는다)
   }
   requestAnimationFrame(beltLoop);
   setStep(3);
@@ -414,7 +421,7 @@ function beltLoop(now) {
   g.fillStyle = css('--ink3'); g.font = '11px sans-serif'; g.textAlign = 'center';
   g.fillText(T('로봇 눈'), scanX, 116);
   for (const it of run.items) {
-    it.x += 110 * dt;
+    it.x += beltSpeed * dt;
     if (it.got === null && it.x >= scanX - 18) {
       it.got = classifyPatch(st.robot.lut, it.p);
       run.done++; if (it.got === it.b + 1) run.ok++;

@@ -21,7 +21,10 @@ const rooms = Object.fromEntries(Object.entries(ROOMS).map(([k, v]) => [k, v.mak
 let bot = 'bounce';
 let agent = null, agentInfo = null;
 let sim = new Sim(rooms[roomId]);
-let running = false, fast = false, botImpl = null, raceRnd = null;
+let running = false, botImpl = null, raceRnd = null;
+// 초당 걸음 수. 느리게 2 · 보통 5 (한 판 30초) · 아주 빠르게 60 (한 판 2.5초)
+// 보통이 예전 8걸음이었을 때는 "배우는 청소기의 생각" 막대가 너무 빨리 바뀌어 읽기 어려웠다.
+let stepsPerSec = 5;
 const logRows = [];
 let curve = [];
 
@@ -120,14 +123,17 @@ $('raceBtn').addEventListener('click', () => {
   requestAnimationFrame(loop);
 });
 $('stopBtn').addEventListener('click', stop);
-$('fastBtn').addEventListener('click', () => { fast = !fast; $('fastBtn').classList.toggle('on', fast); });
+$('speedSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  stepsPerSec = +b.dataset.s;
+  $('speedSeg').querySelectorAll('button').forEach(o => o.classList.toggle('on', o === b));
+}));
 function stop() { running = false; $('raceBtn').disabled = false; $('stopBtn').disabled = true; }
 
 let lastT = 0, acc = 0;
 function loop(now) {
   if (!running) return;
-  acc += (now - lastT) / 1000; lastT = now;
-  const per = fast ? 1 / 60 : 1 / 8;                    // 보통 초당 8걸음, 빠르게 초당 60걸음
+  acc += Math.min(0.25, (now - lastT) / 1000); lastT = now;   // 탭을 잠깐 떠났다 와도 한꺼번에 몰아 달리지 않게
+  const per = 1 / stepsPerSec;
   while (acc >= per && running) {
     acc -= per;
     botImpl.after(sim.act(botImpl.pick(sim)));
