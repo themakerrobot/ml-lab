@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="assets/fonts/pretendard.css?v=1">
 <link rel="stylesheet" href="css/all.min.css?v=1">
 <link rel="stylesheet" href="css/themaker-ui.css?v=1">
-<link rel="stylesheet" href="css/app.css?v=7">
+<link rel="stylesheet" href="css/app.css?v=8">
 </head>
 <body>
 
@@ -33,7 +33,13 @@
   <div class="pan pan-side" id="panL">
     <div class="ph"><i class="fa-solid fa-road"></i>운전 교실</div>
     <div class="pb">
-      <div class="pb-label">트랙 — 10개</div>
+      <div class="seg wide" id="modeSeg">
+        <button type="button" data-mode="basic" class="on"><i class="fa-solid fa-arrows-left-right"></i> 초급</button>
+        <button type="button" data-mode="pro"><i class="fa-solid fa-gauge-high"></i> 고급</button>
+      </div>
+      <div class="hint" id="modeHint">방향만 가르쳐요. 차는 늘 같은 빠르기로 달려요.</div>
+
+      <div class="pb-label" style="margin-top:12px">연습 트랙 — 10개</div>
       <div id="trackPick"></div>
       <div class="row" style="margin-top:8px;align-items:center">
         <span class="pb-label" style="margin:0">방향</span>
@@ -43,6 +49,9 @@
         </div>
       </div>
       <div class="hint">같은 트랙도 거꾸로 돌면 커브 방향이 반대가 돼요.</div>
+
+      <div class="pb-label" style="margin-top:12px">대회 트랙 — AI만 달려요</div>
+      <div id="contestPick"></div>
 
       <div class="sec2">
         <div class="st">누가 운전할까요?</div>
@@ -61,7 +70,7 @@
           <button class="db danger" id="clearBtn"><i class="fa-solid fa-trash"></i> 지우기</button>
         </div>
         <div class="ready" id="readyHint"></div>
-        <div class="hint">바퀴 수보다 <b>왼쪽·오른쪽으로 도는 장면이 골고루</b> 있는 게 중요해요. 둥근 트랙은 한쪽으로만 돌아요.</div>
+        <div class="hint" id="dataTip">바퀴 수보다 왼쪽·오른쪽으로 도는 장면이 골고루 있는 게 중요해요. 둥근 트랙은 한쪽으로만 돌아요.</div>
       </div>
     </div>
   </div>
@@ -73,7 +82,7 @@
       <div class="row" style="margin-bottom:10px;align-items:center;flex-wrap:wrap">
         <button class="db go" id="goBtn"><i class="fa-solid fa-play"></i> 출발</button>
         <button class="db" id="stopBtn" disabled><i class="fa-solid fa-stop"></i> 멈춤</button>
-        <button class="db" id="fastBtn" title="AI 운전을 3배 빠르게"><i class="fa-solid fa-forward"></i> AI 3배</button>
+        <button class="db" id="fastBtn" title="AI가 운전할 때만 3배 빨리 감아요 (기록과 바퀴 시간은 그대로)"><i class="fa-solid fa-forward"></i> 빨리 감기 ×3</button>
         <span style="flex:1"></span>
         <span class="pb-label" style="margin:0">속도</span>
         <div class="seg" id="speedSeg">
@@ -81,7 +90,7 @@
           <button type="button" data-s="0.55" class="on">보통</button>
           <button type="button" data-s="1">빠르게</button>
         </div>
-        <span class="badge" id="lapBadge">0바퀴</span>
+        <span class="badge num" id="lapBadge"></span>
       </div>
       <div id="trackBox">
         <canvas id="cv"></canvas>
@@ -90,6 +99,10 @@
       <div class="padrow">
         <button class="db pad" id="padL" type="button"><i class="fa-solid fa-arrow-left"></i></button>
         <div class="hint" id="keyHint">← → 키로 운전해요. 아무것도 안 누르면 곧게 가요.</div>
+        <div class="pads2" id="padsUD" hidden>
+          <button class="db pad" id="padU" type="button" title="가속"><i class="fa-solid fa-angles-up"></i></button>
+          <button class="db pad" id="padD" type="button" title="감속"><i class="fa-solid fa-angles-down"></i></button>
+        </div>
         <button class="db pad" id="padR" type="button"><i class="fa-solid fa-arrow-right"></i></button>
       </div>
     </div>
@@ -105,6 +118,11 @@
         <div class="lb"><span id="prgLabel">아직 안 배웠어요</span><span class="num" id="prgPct"></span></div>
         <div class="track"><div class="fill" id="prgFill"></div></div>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button class="db grow" id="saveAiBtn" disabled><i class="fa-solid fa-download"></i> AI 저장</button>
+        <button class="db grow" id="loadAiBtn"><i class="fa-solid fa-upload"></i> AI 불러오기</button>
+        <input type="file" id="aiFile" accept=".json,application/json" hidden>
+      </div>
       <canvas id="chart"></canvas>
       <div class="chart-legend">
         <span><i class="lg-acc"></i>맞힌 비율</span>
@@ -112,7 +130,7 @@
       </div>
 
       <div class="sec2">
-        <div class="st">AI가 보는 숫자 — 센서 7개</div>
+        <div class="st" id="sensTitle">AI가 보는 숫자 — 센서 7개</div>
         <div id="sensors"></div>
         <div class="hint">AI는 트랙 그림이 아니라 이 숫자만 봐요. 1에 가까울수록 길이 멀리 열려 있어요.</div>
       </div>
@@ -120,6 +138,13 @@
       <div class="sec2">
         <div class="st">AI라면 이렇게 해요</div>
         <div id="choice"><div class="hint" style="margin-top:0">배운 뒤에 보여요</div></div>
+      </div>
+
+      <div class="sec2" id="raceSec">
+        <div class="st">대회 기록</div>
+        <button class="db wide" id="raceBtn" disabled><i class="fa-solid fa-trophy"></i> 대회 트랙 3개 달리기</button>
+        <div id="raceBoard"></div>
+        <div class="hint" id="raceHint">대회 트랙마다 AI만 3바퀴 달려요. 같은 AI면 어느 컴퓨터에서 해도 결과가 같아요.</div>
       </div>
 
       <div class="sec2">
@@ -134,8 +159,8 @@
 <div id="toast"></div>
 
 <script src="lib/nav.js?v=5"></script>
-<script src="lib/i18n.js?v=7"></script>
-<script src="lib/tour.js?v=5"></script>
-<script type="module" src="acts/drive/page.js?v=5"></script>
+<script src="lib/i18n.js?v=8"></script>
+<script src="lib/tour.js?v=6"></script>
+<script type="module" src="acts/drive/page.js?v=6"></script>
 </body>
 </html>

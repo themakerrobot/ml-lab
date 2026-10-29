@@ -7,12 +7,15 @@
 // 3. 곧게만 가르치면 곧 부딪힌다 — 수업에서 보여 주는 바로 그 현상
 // 4. 바퀴 수보다 좌우 균형, 그리고 급한 커브도 보여 줘야 한다 (화면의 "언제 배우기를 누르나" 안내)
 // 트랙은 10개 × 두 방향 = 20코스. 트랙을 더하면 아래 검사가 모든 코스에서 다시 돈다.
+// 5. 고급 모드 · 대회 트랙 · AI 파일 (edge-lab 자동차 가르치기에서 되가져온 것)
+//    두 갈래 역전파 · 1배는 예전과 비트 단위로 같음 · 대회 트랙 조건 · 고급 흐름 · 드문 행동 무게 ·
+//    AI 파일 왕복 · 대회는 결정적
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRACKS, buildTrack } from '../acts/drive/track.js';
-import { Car, teacher } from '../acts/drive/sim.js';
-import { Policy } from '../acts/drive/policy.js';
+import { TRACKS, CONTEST, buildTrack, onRoad, nearestIdx } from '../acts/drive/track.js';
+import { Car, teacher, teacher2, drive, SPEED, TURN, DT, ACTIONS } from '../acts/drive/sim.js';
+import { Policy, savePolicy, loadPolicy } from '../acts/drive/policy.js';
 
 const tracks = TRACKS.map(d => buildTrack(d));
 const courses = TRACKS.flatMap(d => [buildTrack(d), buildTrack(d, true)]);
@@ -192,4 +195,189 @@ test('쉬운 트랙만 양방향으로 돌면 양쪽은 넉넉해도 급한 커�
   assert.ok(!aiDrive(byId('oval'), pol).crashed && !aiDrive(byId('oval', true), pol).crashed, '둥근 트랙은 양쪽 다 돈다');
   const failed = courses.filter(t => aiDrive(t, pol).crashed);
   assert.ok(failed.some(t => t.def.level === 3), `부딪힌 코스: ${failed.map(name).join(', ') || '없음'}`);
+});
+
+// ════════ 고급 모드 · 대회 트랙 · AI 파일 ════════
+
+const contest = CONTEST.map(d => buildTrack(d));
+
+test('두 갈래 역전파 = 수치 미분 (무게 있을 때 · 없을 때)', () => inF64(() => {
+  const pol = new Policy(8, { hid: 5, heads: [3, 3], seed: 9 });
+  const X = [[0.1, 0.9, 0.3, 0.5, 0.2, 0.7, 0.4, 0.6], [0.7, 0.2, 0.8, 0.1, 0.9, 0.3, 0.5, 0.2], [0.4, 0.4, 0.6, 0.9, 0.1, 0.2, 0.8, 0.9]];
+  const Y = [5, 0, 7], idx = [0, 1, 2];
+  for (const w of [null, Float64Array.from([1.5, 0.7, 2, 3, 0.4, 1.2])]) {
+    pol.grad(X, Y, idx, w);
+    const loss = () => idx.reduce((a, n) => {
+      const P = pol.predict(X[n]);
+      return a - pol.targets(Y[n]).reduce((b, c) => b + (w ? w[c] : 1) * Math.log(P[c] + 1e-9), 0);
+    }, 0) / idx.length;
+    let worst = 0;
+    for (const k in pol.p) {
+      const p = pol.p[k];
+      for (let i = 0; i < p.length; i += Math.max(1, (p.length / 6) | 0)) {
+        const old = p[i], eps = 1e-5;
+        p[i] = old + eps; const lp = loss();
+        p[i] = old - eps; const lm = loss();
+        p[i] = old;
+        const num = (lp - lm) / (2 * eps), a = pol.g[k][i];
+        worst = Math.max(worst, Math.abs(num - a) / Math.max(1e-6, Math.abs(num) + Math.abs(a)));
+      }
+    }
+    assert.ok(worst < 1e-4, `${w ? '무게 있음' : '무게 없음'}: 최대 상대오차 ${worst}`);
+  }
+}));
+
+// 예전(고급 모드 전) Car.step 그대로 — 1배가 바뀌지 않았는지 비교하는 기준
+function oldStep(c, action) {
+  if (c.crashed) return true;
+  c.th += ACTIONS[action] * TURN * DT;
+  c.x += Math.cos(c.th) * SPEED * DT;
+  c.y += Math.sin(c.th) * SPEED * DT;
+  c.dist += SPEED * DT;
+  const fx = c.x + Math.cos(c.th) * 9, fy = c.y + Math.sin(c.th) * 9;
+  if (!onRoad(c.track, c.x, c.y) || !onRoad(c.track, fx, fy)) c.crashed = true;
+  const n = c.track.n, prev = c.idx;
+  c.idx = nearestIdx(c.track, c.x, c.y, prev);
+  if (prev > n * 0.8 && c.idx < n * 0.2) c.laps++;
+  else if (prev < n * 0.2 && c.idx > n * 0.8) c.laps--;
+  return c.crashed;
+}
+
+test('1배는 예전 계산과 비트 단위로 같다 (20코스 × 4000걸음)', () => {
+  for (const t of courses) {
+    const a = new Car(t), b = new Car(t), c = new Car(t), rnd = seeded(5);
+    for (let i = 0; i < 4000; i++) {
+      // 선생님 운전에 가끔 엉뚱한 운전을 섞어 부딪히는 경우도 비교한다 (부딪히면 다시 출발)
+      const act = rnd() < 0.15 ? (rnd() * 3) | 0 : teacher(a.sense());
+      const ra = a.step(act), rb = b.step(act, 1), rc = oldStep(c, act);
+      for (const o of [b, c]) {
+        assert.ok(a.x === o.x && a.y === o.y && a.th === o.th && a.laps === o.laps && a.idx === o.idx && a.dist === o.dist,
+          `${name(t)} ${i}걸음에서 다름`);
+      }
+      assert.ok(ra === rb && ra === rc);
+      if (ra) { a.reset(t); b.reset(t); c.reset(t); }
+    }
+  }
+});
+
+test('대회 트랙 조건: 판 안 · 떨어진 길끼리 안 붙음 · 선생님(초급 · 고급)이 3바퀴', () => {
+  for (const t of contest) {
+    const { pts, n, hw } = t;
+    for (const [x, y] of pts) assert.ok(x - hw >= 0 && x + hw <= 800 && y - hw >= 0 && y + hw <= 520, `${t.def.id} 가 화면 밖`);
+    const cum = [0];
+    for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const len = cum[n - 1];
+    let dmin = Infinity;
+    for (let i = 0; i < n; i += 2) for (let j = i + 1; j < n; j += 2) {
+      const arc = cum[j] - cum[i];
+      if (Math.min(arc, len - arc) < 250) continue;
+      dmin = Math.min(dmin, Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]));
+    }
+    assert.ok(dmin > t.def.width + 18, `${t.def.id}: 가장 가까운 두 길 ${dmin.toFixed(0)}`);
+    const c1 = new Car(t), c2 = new Car(t);
+    for (let i = 0; i < 60 * 300 && !c1.crashed && c1.progress < 3; i++) c1.step(teacher(c1.sense()));
+    for (let i = 0; i < 60 * 300 && !c2.crashed && c2.progress < 3; i++) c2.step2(teacher2(c2.sense2()));
+    assert.ok(!c1.crashed && c1.progress >= 3, `${t.def.id} 초급 선생님 ${c1.progress.toFixed(2)}바퀴`);
+    assert.ok(!c2.crashed && c2.progress >= 3, `${t.def.id} 고급 선생님 ${c2.progress.toFixed(2)}바퀴`);
+    assert.ok(c2.t < c1.t && c2.vMax > 2, `${t.def.id} 고급이 더 빨라야 함 (${c2.t.toFixed(1)}초 · ${c2.vMax.toFixed(2)}배)`);
+    assert.equal(c2.lapTimes().length, 3);
+  }
+});
+
+// 고급 학생: 반응 lag 걸음 늦고 키는 hold 걸음 유지. 방향은 teacher, 빠르기는 thr(s) 규칙
+function proStudent(track, rnd, thr, { lagMin = 4, lagMax = 9, hold = 4, laps = 1 } = {}) {
+  const car = new Car(track), hist = [], rec = [];
+  let act = 4, held = 0;
+  for (let i = 0; i < 60 * 120; i++) {
+    const s = car.sense2(); hist.push(s);
+    if (held <= 0) {
+      const v = hist[Math.max(0, hist.length - 1 - (lagMin + Math.floor(rnd() * (lagMax - lagMin + 1))))];
+      const next = thr(v) * 3 + teacher(v);
+      if (next !== act) { act = next; held = hold; }
+    } else held--;
+    if (i % RECORD_EVERY === 0) rec.push([hist[Math.max(0, hist.length - 1 - REACT_STEPS)], act]);
+    if (car.step2(act) || car.progress >= laps) break;
+  }
+  return { car, rec };
+}
+const thrTeacher = s => (teacher2(s) / 3) | 0;                                    // 감속이 장면의 15~20%
+const thrRare = s => (s[3] > 0.9 && s[7] < 0.9 ? 2 : s[3] < 0.4 && s[7] > 0.4 ? 0 : 1);   // 늦게 · 드물게 감속
+// 섞기 난수도 고정한다 — 같은 seed 면 늘 같은 AI
+function fitPro(rec, { seed = 1, balance = true } = {}) {
+  const pol = new Policy(8, { heads: [3, 3], seed }), rnd = seeded(seed * 101);
+  const X = rec.map(r => r[0]), Y = rec.map(r => r[1]);
+  let r; for (let e = 0; e < 60; e++) r = pol.fitEpoch(X, Y, { balance, rnd });
+  return { pol, ...r };
+}
+
+test('고급 흐름: 늦게 반응하는 학생이 연습 트랙 2개를 1바퀴씩 → 대회 트랙 3개 완주, 초급 선생님보다 빠르다', () => {
+  const rnd = seeded(42), rec = [];
+  for (const id of ['wavy', 'snake']) {
+    const { car, rec: r } = proStudent(byId(id), rnd, thrTeacher);
+    assert.ok(!car.crashed, `학생이 ${id} 에서 부딪힘`);
+    rec.push(...r);
+  }
+  const thr = [0, 1, 2].map(k => rec.filter(r => ((r[1] / 3) | 0) === k).length);
+  assert.ok(thr[0] >= 20 && thr[2] >= 20, `감속/그대로/가속 ${thr}`);
+  const { pol } = fitPro(rec);
+  for (const t of contest) {
+    const r = drive(t, pol, 'pro');
+    assert.ok(r.ok, `${t.def.id}: ${r.prog.toFixed(2)}바퀴에서 멈춤`);
+    assert.ok(r.t < 56 && r.vMax > 1.8, `${t.def.id}: ${r.t.toFixed(1)}초 · ${r.vMax.toFixed(2)}배`);   // 초급 선생님 51~57초
+  }
+});
+
+test('드문 행동 무게: 감속을 드물게 보여 주면 무게 없이는 거의 안 줄이고, 무게가 있으면 줄인다', () => {
+  const rnd = seeded(7), rec = [];
+  for (const id of ['wavy', 'snake', 'city']) rec.push(...proStudent(byId(id), rnd, thrRare).rec);
+  const brakes = rec.filter(r => ((r[1] / 3) | 0) === 0);
+  assert.ok(brakes.length / rec.length < 0.15, `감속 장면 ${brakes.length}/${rec.length}`);
+  // 학생이 감속한 장면에서 AI 도 감속을 고르는 비율
+  const recall = pol => brakes.filter(r => ((pol.act(r[0]) / 3) | 0) === 0).length / brakes.length;
+  // 씨앗 10개로 재 보니 무게 없음 0.37~0.65 (대회 3 에서 늘 부딪힘), 있음 0.88~0.98 (대회 3개 모두 완주)
+  for (const seed of [1, 2, 3]) {
+    const plain = fitPro(rec, { seed, balance: false }).pol, weighted = fitPro(rec, { seed, balance: true }).pol;
+    const pr = recall(plain), wr = recall(weighted);
+    assert.ok(pr < 0.7 && wr > 0.85, `seed ${seed}: 감속 재현 무게 없음 ${pr.toFixed(2)} · 있음 ${wr.toFixed(2)}`);
+    assert.ok(!drive(contest[2], plain, 'pro').ok, `seed ${seed}: 무게 없는 AI 가 대회 3 을 완주함`);
+    for (const t of contest) assert.ok(drive(t, weighted, 'pro').ok, `seed ${seed}: 무게 있는 AI 가 ${t.def.id} 에서 멈춤`);
+  }
+});
+
+test('AI 파일: 저장 → 불러오기 왕복, edge-lab 파일도 읽힘, 망가진 파일은 알림', () => {
+  const rnd = seeded(3), rec = [];
+  for (const id of ['wavy']) rec.push(...proStudent(byId(id), rnd, thrTeacher).rec);
+  const pro = fitPro(rec).pol, basic = new Policy();
+  for (const [pol, mode] of [[pro, 'pro'], [basic, 'basic']]) {
+    const o = JSON.parse(JSON.stringify(savePolicy(pol, { mode, scenes: rec.length, acc: 80 })));
+    assert.equal(o.kind, 'ml-lab-drive'); assert.equal(o.mode, mode);
+    for (const kind of ['ml-lab-drive', 'edge-lab-drive']) {
+      const back = loadPolicy({ ...o, kind });
+      assert.deepEqual(back.heads, pol.heads);
+      for (const [x] of rec.slice(0, 200)) {
+        const xx = mode === 'pro' ? x : x.slice(0, 7);
+        assert.equal(back.act(xx), pol.act(xx));
+      }
+      // 대회 기록도 같다
+      const t = contest[0];
+      assert.deepEqual(drive(t, back, mode), drive(t, pol, mode));
+    }
+  }
+  const o = savePolicy(pro);
+  assert.throws(() => loadPolicy({ ...o, kind: 'something-else' }), /운전 AI 파일이 아니에요/);
+  assert.throws(() => loadPolicy(null), /운전 AI 파일이 아니에요/);
+  assert.throws(() => loadPolicy({ ...o, p: { ...o.p, W1: o.p.W1.slice(1) } }), e => e.part === 'W1' && /망가졌어요/.test(e.message));
+  assert.throws(() => loadPolicy({ ...o, p: { ...o.p, b2: o.p.b2.map(() => 'x') } }), e => e.part === 'b2');
+  assert.throws(() => loadPolicy({ ...o, nIn: 9 }), /운전 AI 파일이 아니에요/);
+});
+
+test('대회는 결정적: 같은 AI 로 두 번 달리면 기록이 똑같다', () => {
+  const rnd = seeded(11), rec = [];
+  rec.push(...proStudent(byId('snake'), rnd, thrTeacher).rec);
+  const pol = fitPro(rec).pol;
+  const basic = fit(studentDrive(byId('wavy'), seeded(11)).rec).pol;
+  for (const t of contest) {
+    assert.deepEqual(drive(t, pol, 'pro'), drive(t, pol, 'pro'));
+    assert.deepEqual(drive(t, basic, 'basic'), drive(t, basic, 'basic'));
+  }
 });

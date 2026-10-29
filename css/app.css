@@ -129,7 +129,18 @@ table.att tr.last th{color:var(--acc-ink);font-weight:800}
 .sensor .bt{flex:1;height:7px;border-radius:4px;background:var(--line-soft);overflow:hidden}
 .sensor .bf{height:100%;background:var(--ok)}
 .sensor .sv{width:30px;flex-shrink:0;color:var(--ink2);font-weight:700}
-#trackPick{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+#trackPick,#contestPick{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px}
+.seg.wide{display:flex;width:100%}
+.seg.wide button{flex:1;padding:8px 10px;font-size:13px}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.pads2{display:flex;flex-direction:column;gap:4px}
+.pads2[hidden]{display:none}
+.pads2 .db.pad{height:30px;font-size:13px}
+.grp{margin:8px 0 2px;font-size:11px;font-weight:700;color:var(--ink3)}
+#runLog .saved,#raceBoard .saved{flex-wrap:wrap;margin-top:4px}
+#runLog .saved .mt,#raceBoard .saved .mt{flex-basis:100%;white-space:normal;padding-left:20px}
+.race-tot{margin-top:6px;font-size:12px;font-weight:700;color:var(--acc-ink)}
+#raceBtn{margin-top:4px}
 .tcard{border:1px solid var(--line);border-radius:9px;padding:5px;cursor:pointer;background:var(--panel)}
 .tcard:hover{border-color:var(--acc)}
 .tcard.on{border-color:var(--acc);background:var(--acc-soft)}
@@ -294,6 +305,7 @@ table.exam td.ok{color:var(--ok);font-weight:700}
   #duelIn{font-size:16px}
   .seg button{font-size:13.5px;padding:7px 12px}
   .db.pad{width:76px;height:52px}
+  .pads2 .db.pad{height:38px}
   .eye-ai{width:100%}
   .eye-src{max-width:none}
   .augs{font-size:14px}
