@@ -9,9 +9,9 @@
 // 고급: 방향 + 빠르기 (센서 7개 + 빠르기 → 방향 3 · 빠르기 3). edge-lab 자동차 가르치기와 같은 계산.
 // 두 모드는 AI 가 보는 숫자 개수가 달라(7 · 8) 모은 운전 · AI · 기록을 따로 가진다.
 
-import { TRACKS, CONTEST, WORLD_W, WORLD_H, buildTrack, centerline } from './track.js?v=6';
-import { Car, RAY_DEG, RAY_MAX, DT, drive as raceDrive } from './sim.js?v=6';
-import { Policy, savePolicy, loadPolicy } from './policy.js?v=6';
+import { TRACKS, CONTEST, WORLD_W, WORLD_H, buildTrack, centerline } from './track.js?v=7';
+import { Car, RAY_DEG, RAY_MAX, DT, drive as raceDrive } from './sim.js?v=7';
+import { Policy, savePolicy, loadPolicy } from './policy.js?v=7';
 
 const T = s => (typeof GL_T === 'function' ? GL_T(s) : s);
 const $ = id => document.getElementById(id);
@@ -27,7 +27,7 @@ const MIN_SAMPLES = 30;
 // 왼쪽·오른쪽으로 도는 장면이 각각 이만큼은 있어야 처음 보는 트랙에서도 잘 돈다.
 // 사람처럼 늦게 반응하는 가상 학생으로 재 보니 바퀴 수보다 이 균형이 중요했다:
 // 둥근 트랙만 돌며 왼쪽이 6~15장면이면 다른 트랙에서 곧 부딪혔고,
-// 양쪽이 각각 30장면을 넘으면 구불구불 트랙 반 바퀴로도 20개 코스를 모두 돌았다.
+// 양쪽이 각각 30장면을 넘으면 구불구불 트랙 반 바퀴로도 24개 코스를 모두 돌았다.
 // 다만 쉬운 트랙(둥근·경기장)만 양방향으로 돌면 양쪽 장면은 넉넉해도 급한 커브를
 // 못 배워 산길·콩 트랙에서 부딪혔다 — 그래서 쉬운 트랙에서만 모았으면 따로 알려 준다.
 const READY_TURNS = 30;
@@ -39,7 +39,7 @@ const THR_ICON = ['fa-angles-down', 'fa-equals', 'fa-angles-up'];
 const LEVEL_LABEL = ['', '쉬움', '보통', '어려움'];
 
 // ── 상태 ────────────────────────────────────────────────────
-// 트랙 번호: 0~9 연습 트랙(TRACKS), 10~12 대회 트랙(CONTEST)
+// 트랙 번호: 0~11 연습 트랙(TRACKS), 12~14 대회 트랙(CONTEST)
 const ALL = [...TRACKS, ...CONTEST];
 const isRace = i => !!ALL[i].contest;
 // 트랙은 고를 때 만든다 (마스크 만들기가 무거워서 처음에 다 만들지 않는다)

@@ -6,7 +6,7 @@
 //    가르칠 때 안 쓴 트랙까지 완주한다 (화면의 기록 방식과 같다)
 // 3. 곧게만 가르치면 곧 부딪힌다 — 수업에서 보여 주는 바로 그 현상
 // 4. 바퀴 수보다 좌우 균형, 그리고 급한 커브도 보여 줘야 한다 (화면의 "언제 배우기를 누르나" 안내)
-// 트랙은 10개 × 두 방향 = 20코스. 트랙을 더하면 아래 검사가 모든 코스에서 다시 돈다.
+// 연습 트랙은 12개 × 두 방향 = 24코스. 트랙을 더하면 아래 검사가 모든 코스에서 다시 돈다.
 // 5. 고급 모드 · 대회 트랙 · AI 파일 (edge-lab 자동차 가르치기에서 되가져온 것)
 //    두 갈래 역전파 · 1배는 예전과 비트 단위로 같음 · 대회 트랙 조건 · 고급 흐름 · 드문 행동 무게 ·
 //    AI 파일 왕복 · 대회는 결정적
@@ -106,7 +106,7 @@ test('트랙 모양: 화면 안에 있고, 떨어진 길끼리 붙지 않는다'
   }
 });
 
-test('선생님 운전은 20코스(10트랙 × 두 방향)를 모두 돈다', () => {
+test('선생님 운전은 24코스(12트랙 × 두 방향)를 모두 돈다', () => {
   for (const t of courses) {
     const car = new Car(t);
     for (let i = 0; i < 60 * 90 && !car.crashed && car.progress < 2; i++) car.step(teacher(car.sense()));
@@ -178,7 +178,7 @@ test('바퀴 수보다 좌우 균형: 둥근 트랙에서 한쪽만 돌면 다�
   const a = fit(oneSided).pol;
   assert.ok(!aiDrive(byId('oval'), a).crashed, '가르친 둥근 트랙은 돈다');
   assert.ok(aiDrive(byId('wavy'), a).crashed && aiDrive(byId('test'), a).crashed, '다른 트랙에서는 부딪힌다');
-  // 구불구불 트랙 반 바퀴를 자주 고치며 운전 → 양쪽이 넉넉하고 20코스를 모두 돈다
+  // 구불구불 트랙 반 바퀴를 자주 고치며 운전 → 양쪽이 넉넉하고 24코스를 모두 돈다
   const balanced = smoothDrive(byId('wavy'), seeded(12), 0.5, 0.3);
   const d = [0, 1, 2].map(k => balanced.filter(r => r[1] === k).length);
   assert.ok(Math.min(d[0], d[2]) >= 30, `왼/곧/오 ${d}`);
@@ -243,7 +243,7 @@ function oldStep(c, action) {
   return c.crashed;
 }
 
-test('1배는 예전 계산과 비트 단위로 같다 (20코스 × 4000걸음)', () => {
+test('1배는 예전 계산과 비트 단위로 같다 (24코스 × 4000걸음)', () => {
   for (const t of courses) {
     const a = new Car(t), b = new Car(t), c = new Car(t), rnd = seeded(5);
     for (let i = 0; i < 4000; i++) {
@@ -334,7 +334,7 @@ test('드문 행동 무게: 감속을 드물게 보여 주면 무게 없이는 �
   assert.ok(brakes.length / rec.length < 0.15, `감속 장면 ${brakes.length}/${rec.length}`);
   // 학생이 감속한 장면에서 AI 도 감속을 고르는 비율
   const recall = pol => brakes.filter(r => ((pol.act(r[0]) / 3) | 0) === 0).length / brakes.length;
-  // 씨앗 10개로 재 보니 무게 없음 0.37~0.65 (대회 3 에서 늘 부딪힘), 있음 0.88~0.98 (대회 3개 모두 완주)
+  // 씨앗 10개로 재 보니 무게 없음 0.22~0.67 (대회 3 에서 늘 부딪힘), 있음 0.78~1.00 (대회 3개 모두 완주)
   for (const seed of [1, 2, 3]) {
     const plain = fitPro(rec, { seed, balance: false }).pol, weighted = fitPro(rec, { seed, balance: true }).pol;
     const pr = recall(plain), wr = recall(weighted);
@@ -350,7 +350,7 @@ test('AI 파일: 저장 → 불러오기 왕복, edge-lab 파일도 읽힘, 망�
   const pro = fitPro(rec).pol, basic = new Policy();
   for (const [pol, mode] of [[pro, 'pro'], [basic, 'basic']]) {
     const o = JSON.parse(JSON.stringify(savePolicy(pol, { mode, scenes: rec.length, acc: 80 })));
-    assert.equal(o.kind, 'ml-lab-drive'); assert.equal(o.mode, mode);
+    assert.equal(o.kind, 'edge-lab-drive'); assert.equal(o.mode, mode);   // edge-lab 이 그대로 읽는 형식
     for (const kind of ['ml-lab-drive', 'edge-lab-drive']) {
       const back = loadPolicy({ ...o, kind });
       assert.deepEqual(back.heads, pol.heads);

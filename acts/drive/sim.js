@@ -10,7 +10,7 @@
 // AI 는 센서 7개 + 지금 빠르기를 본다. 고급 계산은 edge-lab view_project/lib/drive.js 와 같다
 // (같은 AI 파일이면 두 저장소에서 같은 대회 기록이 나오게).
 
-import { onRoad, nearestIdx } from './track.js?v=6';
+import { onRoad, nearestIdx } from './track.js?v=7';
 
 export const RAY_DEG = [-90, -60, -30, 0, 30, 60, 90];
 export const RAY_MAX = 160;           // 센서가 볼 수 있는 가장 먼 거리
@@ -55,7 +55,7 @@ export class Car {
 
   // action: 0/1/2, k: 빠르기 배수 (초급은 늘 1). 반환: 부딪혔는지
   // 판단은 1/60초에 한 번, 움직임만 ceil(k) 번으로 잘게 나눠 길을 건너뛰지 않게 한다.
-  // k = 1 이면 예전 계산과 비트 단위로 같다 (식의 계산 순서까지 그대로 — tests/drive.test.mjs 가 20코스로 비교).
+  // k = 1 이면 예전 계산과 비트 단위로 같다 (식의 계산 순서까지 그대로 — tests/drive.test.mjs 가 24코스로 비교).
   step(action, k = 1) {
     if (this.crashed) return true;
     const sub = Math.ceil(k);

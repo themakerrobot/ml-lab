@@ -147,11 +147,12 @@ export class Policy {
 
 // ── AI 파일 ─────────────────────────────────────────────────
 // 배운 AI 를 JSON 으로. 계산에 난수가 없어 다른 PC 에서 불러와도 같은 운전을 한다.
-// edge-lab 자동차 가르치기와 형식이 같다 (kind 만 다름) — 트랙 · 물리가 같아 같은 AI 면 같은 대회 기록이 나온다.
-export const AI_KINDS = ['ml-lab-drive', 'edge-lab-drive'];
+// edge-lab 자동차 가르치기와 형식까지 같게 저장한다 (kind 'edge-lab-drive') — edge-lab 이 고치지 않고 바로 읽는다.
+// 트랙 · 물리가 같아 같은 AI 면 두 서비스에서 같은 대회 기록이 나온다. 읽을 때는 예전 ml-lab 파일('ml-lab-drive')도 받는다.
+export const AI_KINDS = ['edge-lab-drive', 'ml-lab-drive'];
 
 export function savePolicy(pol, info = {}) {
-  const o = { kind: 'ml-lab-drive', v: 1, nIn: pol.nIn, hid: pol.hid, heads: pol.heads.slice(), p: {} };
+  const o = { kind: 'edge-lab-drive', v: 1, nIn: pol.nIn, hid: pol.hid, heads: pol.heads.slice(), p: {} };
   for (const k in pol.p) o.p[k] = Array.from(pol.p[k], v => +v.toPrecision(7));
   return Object.assign(o, info);
 }
