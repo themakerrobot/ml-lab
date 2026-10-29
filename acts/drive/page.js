@@ -145,7 +145,7 @@ ALL.forEach((def, i) => {
   el.innerHTML = `<canvas width="160" height="104"></canvas>
     <div class="tn"><span>${T(def.label)}</span></div>
     <div class="tl${def.unseen || def.contest ? ' test' : ''}">${tag}${T(LEVEL_LABEL[def.level])}</div>`;
-  el.addEventListener('click', () => { if (!racing) pickTrack(i, def.contest ? false : reverse); });
+  el.addEventListener('click', () => { if (!racing) pickTrack(i, reverse); });
   $(def.contest ? 'contestPick' : 'trackPick').appendChild(el);
   drawThumb(el.querySelector('canvas'), def);
 });
@@ -154,17 +154,17 @@ $('dirSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', 
   pickTrack(trackIdx, b.dataset.r === '1');
 }));
 const allCards = () => [...$('trackPick').children, ...$('contestPick').children];
+// 대회 트랙은 기본 방향만 (거꾸로 없음 — 방향 고르기를 숨긴다). 연습 트랙에서 고른 방향은 기억해 둔다.
 function pickTrack(i, rev) {
   if (running) stop();
-  trackIdx = i; reverse = isRace(i) ? false : rev;
-  track = getTrack(i, reverse);
+  trackIdx = i;
+  if (!isRace(i)) reverse = rev;
+  track = getTrack(i, isRace(i) ? false : reverse);
   car.reset(track);
   if (race()) who = 'ai';                       // 대회 트랙은 AI 만
   allCards().forEach((el, j) => el.classList.toggle('on', j === i));
-  $('dirSeg').querySelectorAll('button').forEach(o => {
-    o.classList.toggle('on', (o.dataset.r === '1') === reverse);
-    o.disabled = race();
-  });
+  $('dirSeg').querySelectorAll('button').forEach(o => o.classList.toggle('on', (o.dataset.r === '1') === reverse));
+  $('dirBox').hidden = race();
   $('panTitle').textContent = trackName();
   if ((track.def.unseen || race()) && M.policy) setStep(4);
   roadCache = null;

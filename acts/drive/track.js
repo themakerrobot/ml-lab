@@ -111,7 +111,7 @@ export const TRACKS = [
 // 대회 트랙 — AI 만 달린다 (사람 운전 · 끼어들기 · 장면 모으기 없음). 연습 트랙(TRACKS)과 따로 둔다:
 // 섞으면 "트랙 — 10개", 20코스 검사, DEVELOP.md 의 일반화 표가 모두 바뀐다.
 // 조절점은 edge-lab(view_project/lib/drive.js)과 똑같다 — spline · 마스크 계산도 같아서 같은 트랙이 된다.
-// 기본 방향만 쓴다 (거꾸로는 재 보지 않았다). c1 은 연습용 '머리핀 트랙' 과 헷갈리지 않게 이름만 바꿨다.
+// 기본 방향만 쓴다 (거꾸로는 없다 — 화면에서 방향 고르기를 숨긴다). c1 은 연습용 '머리핀 트랙' 과 헷갈리지 않게 이름만 바꿨다.
 export const CONTEST = [
   {
     id: 'c1', label: '대회 1 · U턴', width: 66, level: 3, contest: true,
