@@ -9,8 +9,8 @@
 // 고급: 방향 + 빠르기 (센서 7개 + 빠르기 → 방향 3 · 빠르기 3). edge-lab 자동차 가르치기와 같은 계산.
 // 두 모드는 AI 가 보는 숫자 개수가 달라(7 · 8) 모은 운전 · AI · 기록을 따로 가진다.
 
-import { TRACKS, CONTEST, WORLD_W, WORLD_H, buildTrack, centerline } from './track.js?v=7';
-import { Car, RAY_DEG, RAY_MAX, DT, drive as raceDrive } from './sim.js?v=7';
+import { TRACKS, CONTEST, WORLD_W, WORLD_H, buildTrack, centerline } from './track.js?v=8';
+import { Car, RAY_DEG, RAY_MAX, DT, drive as raceDrive } from './sim.js?v=8';
 import { Policy, savePolicy, loadPolicy } from './policy.js?v=7';
 
 const T = s => (typeof GL_T === 'function' ? GL_T(s) : s);

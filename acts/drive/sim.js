@@ -10,7 +10,7 @@
 // AI 는 센서 7개 + 지금 빠르기를 본다. 고급 계산은 edge-lab view_project/lib/drive.js 와 같다
 // (같은 AI 파일이면 두 저장소에서 같은 대회 기록이 나오게).
 
-import { onRoad, nearestIdx } from './track.js?v=7';
+import { onRoad, nearestIdx } from './track.js?v=8';
 
 export const RAY_DEG = [-90, -60, -30, 0, 30, 60, 90];
 export const RAY_MAX = 160;           // 센서가 볼 수 있는 가장 먼 거리
